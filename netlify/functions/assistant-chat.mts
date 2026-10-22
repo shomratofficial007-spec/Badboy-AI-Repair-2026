@@ -6,7 +6,7 @@
 // shape intentionally mirror artifacts/api-server/src/routes/assistant.ts.
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
-const OPENROUTER_MODEL_ID = "google/gemma-4-31b-it:free";
+const OPENROUTER_MODEL_ID = "nvidia/nemotron-3.5-lightning:free";
 
 function readEnv(name: string): string {
   try {

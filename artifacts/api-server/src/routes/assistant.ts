@@ -88,7 +88,7 @@ router.post("/assistant/voice", (_req, res) => {
   res.status(501).json({
     code: "MODEL_AUDIO_UNSUPPORTED",
     error:
-      "The selected Gemma free model accepts text, image, or video input and returns text only. Voice input and spoken responses are unavailable.",
+      "The selected Nemotron free model accepts text input and returns text only. Voice input and spoken responses are unavailable.",
   });
 });
 
