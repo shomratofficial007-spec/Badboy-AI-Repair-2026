@@ -24,7 +24,7 @@ export interface AssistantSettings {
 
 export const DEFAULT_SETTINGS: AssistantSettings = {
   onlineAI: true,
-  personality: 'Warm, thoughtful, clear, and practical. Keep replies easy to follow.',
+  personality: 'Warm, thoughtful, clear, and practical. Always reply in Bangla (Bengali).',
   autoImprove: true,
   developerMode: false,
   voiceProcessingConsent: false,
