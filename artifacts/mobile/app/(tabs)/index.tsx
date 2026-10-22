@@ -16,6 +16,13 @@ import {
 } from 'react-native';
 import { useAssistant } from '@/context/AssistantContext';
 import { streamReply } from '@/lib/assistant/api';
+import {
+  dictateOnce,
+  isDictationAvailable,
+  isReadAloudAvailable,
+  speak,
+  stopSpeaking,
+} from '@/lib/assistant/voice';
 import type { ChatMessage } from '@/lib/assistant/types';
 import { useColors } from '@/hooks/useColors';
 
@@ -35,8 +42,11 @@ export default function ChatScreen() {
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [improving, setImproving] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
+  const stopDictationRef = useRef<(() => void) | null>(null);
 
   const sendMessage = useCallback(async (rawText: string) => {
     const text = rawText.trim();
@@ -114,10 +124,63 @@ export default function ChatScreen() {
   }, [improving, messages, settings, updateSettings]);
 
   const toggleVoice = useCallback(() => {
-    setError(
-      'এই OpenRouter free model অডিও ইনপুট বা ভয়েস উত্তর সমর্থন করে না। আপাতত লিখে চ্যাট করুন।',
-    );
-  }, []);
+    if (Platform.OS !== 'web' || !isDictationAvailable()) {
+      setError(
+        'এই ডিভাইসে ভয়েস টাইপিং সমর্থিত নয়। আপাতত লিখে চ্যাট করুন।',
+      );
+      return;
+    }
+    if (!settings.voiceProcessingConsent) {
+      setError(
+        'ভয়েস টাইপিং চালু করতে Settings-এ ভয়েস সম্মতি দিন। আপনার কণ্ঠ ব্রাউজারের speech service-এ পাঠানো হবে।',
+      );
+      return;
+    }
+    if (listening) {
+      stopDictationRef.current?.();
+      stopDictationRef.current = null;
+      return;
+    }
+    setError(null);
+    setListening(true);
+    const base = draft;
+    stopDictationRef.current = dictateOnce({
+      onTranscript: (text) => {
+        const combined = base ? `${base} ${text}`.trim() : text.trim();
+        setDraft(combined.slice(0, 4000));
+      },
+      onError: () => setError('ভয়েস শোনা যায়নি। আবার চেষ্টা করুন।'),
+      onDone: () => {
+        setListening(false);
+        stopDictationRef.current = null;
+      },
+    });
+  }, [draft, listening, settings.voiceProcessingConsent]);
+
+  const toggleReadAloud = useCallback(() => {
+    if (speaking) {
+      stopSpeaking();
+      setSpeaking(false);
+      return;
+    }
+    const lastAssistant = [...messages]
+      .reverse()
+      .find((item) => item.role === 'assistant' && item.content.trim());
+    if (!lastAssistant) {
+      setError('পড়ে শোনানোর মতো কোনো উত্তর নেই।');
+      return;
+    }
+    if (Platform.OS !== 'web' || !isReadAloudAvailable()) {
+      setError('এই ডিভাইসে পড়ে শোনানো সমর্থিত নয়।');
+      return;
+    }
+    setError(null);
+    setSpeaking(true);
+    speak(lastAssistant.content);
+    // SpeechSynthesis has no reliable cross-browser end event through
+    // this path, so release the button shortly after starting.
+    setTimeout(() => setSpeaking(false), 1500);
+  }, [messages, speaking]);
 
   const clearChat = () => {
     Alert.alert(
@@ -265,12 +328,22 @@ export default function ChatScreen() {
           accessibilityLabel="আপনার বার্তা"
         />
         <Pressable
-          onPress={() => void toggleVoice()}
+          onPress={() => toggleVoice()}
           accessibilityRole="button"
-          accessibilityLabel="বর্তমান মডেলে ভয়েস ব্যবহার করা যায় না"
+          accessibilityLabel={listening ? 'ভয়েস টাইপিং বন্ধ করুন' : 'ভয়েসে লিখুন'}
+          style={[styles.roundButton, { backgroundColor: listening ? colors.primary : colors.accent }]}
+        >
+          {listening
+            ? <ActivityIndicator size="small" color={colors.primaryForeground} />
+            : <Feather name="mic" size={18} color={colors.accentForeground} />}
+        </Pressable>
+        <Pressable
+          onPress={() => toggleReadAloud()}
+          accessibilityRole="button"
+          accessibilityLabel={speaking ? 'পড়া বন্ধ করুন' : 'শেষ উত্তর পড়ে শোনান'}
           style={[styles.roundButton, { backgroundColor: colors.accent }]}
         >
-          <Feather name="mic-off" size={18} color={colors.accentForeground} />
+          <Feather name={speaking ? 'volume-x' : 'volume-2'} size={18} color={colors.accentForeground} />
         </Pressable>
         <Pressable
           onPress={() => void sendMessage(draft)}

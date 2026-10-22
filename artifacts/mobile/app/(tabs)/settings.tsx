@@ -223,8 +223,16 @@ export default function SettingsScreen() {
           <Feather name="mic" size={17} color={colors.primary} />
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>ভয়েস ও “Oi”</Text>
         </View>
+        <SettingSwitch
+          colors={colors}
+          title="ভয়েস সম্মতি"
+          subtitle="চালু থাকলে ব্রাউজারে ভয়েস টাইপিং ও পড়ে শোনানো ব্যবহার করা যাবে। ভয়েস টাইপিংয়ে আপনার কণ্ঠ ব্রাউজারের speech service-এ পাঠানো হয়।"
+          value={settings.voiceProcessingConsent}
+          onValueChange={(value) => updateSettings({ voiceProcessingConsent: value })}
+        />
+        <View style={[styles.rule, { backgroundColor: colors.border }]} />
         <Text style={[styles.body, { color: colors.mutedForeground }]}>
-          নির্বাচিত OpenRouter free model অডিও ইনপুট নিতে বা কণ্ঠে উত্তর দিতে পারে না। তাই এই মডেলে মাইক্রোফোন ব্যবহার বন্ধ; লিখে চ্যাট করা যাবে।
+          নির্বাচিত OpenRouter free model সরাসরি অডিও বার্তা নিতে পারে না, তাই চ্যাটে মাইক চাপলে ব্রাউজারের ভয়েস টাইপিং লেখায় রূপ নেয়; স্পিকার চাপলে শেষ উত্তর ডিভাইসেই পড়ে শোনানো হয়।
         </Text>
         <View style={[styles.wakeCard, { backgroundColor: colors.accent }]}>
           <Feather name="moon" size={16} color={colors.accentForeground} />

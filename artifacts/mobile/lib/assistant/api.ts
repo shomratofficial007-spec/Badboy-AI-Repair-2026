@@ -2,6 +2,17 @@ import { fetch as expoFetch } from 'expo/fetch';
 import type { AssistantSettings } from '@/lib/assistant/types';
 
 function apiUrl(path: string) {
+  // On Netlify (production and previews) the API is a same-origin
+  // Netlify Function, so prefer the page origin when running on web.
+  if (
+    typeof window !== 'undefined' &&
+    typeof window.location?.origin === 'string' &&
+    window.location.origin.startsWith('http')
+  ) {
+    return `${window.location.origin}/api${path}`;
+  }
+  // Native builds and non-Netlify hosts still reach a separately
+  // deployed API through the configured domain.
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
   if (!domain) throw new Error('The assistant server is not available in this preview.');
   return `https://${domain}/api${path}`;
