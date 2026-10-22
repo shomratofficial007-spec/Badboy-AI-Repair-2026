@@ -1,5 +1,5 @@
 export const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
-export const OPENROUTER_MODEL_ID = "google/gemma-4-31b-it:free";
+export const OPENROUTER_MODEL_ID = "nvidia/nemotron-3.5-lightning:free";
 
 export type OpenRouterMessage = {
   role: "system" | "user" | "assistant";

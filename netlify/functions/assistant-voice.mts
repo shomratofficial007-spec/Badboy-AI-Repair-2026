@@ -14,7 +14,7 @@ export default async (req: Request): Promise<Response> => {
     {
       code: "MODEL_AUDIO_UNSUPPORTED",
       error:
-        "The selected Gemma free model accepts text, image, or video input and returns text only. Voice input and spoken responses are unavailable.",
+        "The selected Nemotron free model accepts text input and returns text only. Voice input and spoken responses are unavailable.",
     },
     { status: 501 },
   );
