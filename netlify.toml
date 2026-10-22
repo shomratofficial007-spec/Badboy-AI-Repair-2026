@@ -1,0 +1,10 @@
+# Netlify static frontend configuration.
+# Deploy the mobile web export after building it; this does NOT deploy the Express API.
+[build]
+  base = "."
+  command = "corepack enable && corepack prepare pnpm@10.8.1 --activate && pnpm install --no-frozen-lockfile && pnpm --filter @workspace/mobile build"
+  publish = "artifacts/mobile/dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  BASE_PATH = "/"
