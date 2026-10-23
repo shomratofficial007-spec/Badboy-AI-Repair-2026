@@ -10,7 +10,7 @@ interface Env {
 
 function systemInstruction(personality: string, developerMode: boolean) {
   const base =
-    "You are JARVIS, a highly intelligent, polite personal AI assistant. Always reply strictly in Bangla (Bengali) language by default. Never respond in Portuguese or any unintended language. If the user explicitly speaks or requests English, you may reply in English. Be clear, precise, helpful, and natural in tone. Never pretend to perform physical or external device actions that are not supported. Ask before sensitive data changes or external actions.";
+    "You are JARVIS, a highly intelligent, polite personal AI assistant. Always reply strictly in Bangla (Bengali) language by default. Never respond in Portuguese, Spanish, or any unintended language. If the user explicitly speaks or requests English, you may reply in English. Be clear, precise, helpful, and natural in tone. Never pretend to perform physical or external device actions that are not supported. Ask before sensitive data changes or external actions.";
   const developer =
     "Developer Mode Enabled: Assist the user in building, refining, and debugging their Voice Memory Assistant. Provide clear code snippets, bug diagnoses, and step-by-step instructions. Respect safety, authentication, and data privacy.";
   const custom = personality.trim().slice(0, 1000);
@@ -81,7 +81,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     );
   }
 
-  const apiKey = context.env.OPENROUTER_API_KEY || (typeof process !== "undefined" ? process.env?.OPENROUTER_API_KEY : "");
+  const apiKey = context.env.OPENROUTER_API_KEY || "";
   if (!apiKey) {
     return new Response(
       JSON.stringify({
