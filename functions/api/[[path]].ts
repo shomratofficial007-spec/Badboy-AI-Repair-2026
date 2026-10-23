@@ -1,4 +1,4 @@
-// Cloudflare Pages Function: /api/* routes backed by OpenRouter.
+// Cloudflare Pages Function & Worker: /api/* routes backed by OpenRouter.
 // Directs /api/assistant/chat requests to OpenRouter with streaming SSE.
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
@@ -6,6 +6,7 @@ const OPENROUTER_MODEL_ID = "nvidia/nemotron-3.5-lightning:free";
 
 interface Env {
   OPENROUTER_API_KEY?: string;
+  ASSETS?: { fetch: (req: Request) => Promise<Response> };
 }
 
 function systemInstruction(personality: string, developerMode: boolean) {
@@ -87,7 +88,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       JSON.stringify({
         code: "AI_NOT_CONFIGURED",
         error:
-          "Add OPENROUTER_API_KEY to your Cloudflare Pages environment variables to activate AI chat.",
+          "Add OPENROUTER_API_KEY to your Cloudflare environment variables to activate AI chat.",
       }),
       { status: 503, headers: { "Content-Type": "application/json" } }
     );
@@ -115,7 +116,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         stream: true,
       }),
     });
-  } catch (err) {
+  } catch {
     return new Response(
       JSON.stringify({
         code: "OPENROUTER_REQUEST_FAILED",
@@ -210,4 +211,31 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       "Access-Control-Allow-Origin": "*",
     },
   });
+};
+
+export default {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const url = new URL(request.url);
+    if (url.pathname === "/api/assistant/chat" && request.method === "POST") {
+      return onRequestPost({
+        request,
+        env,
+        params: {},
+        waitUntil: (promise: Promise<unknown>) => {
+          if (ctx && typeof ctx.waitUntil === "function") {
+            ctx.waitUntil(promise);
+          }
+        },
+        next: () => Promise.resolve(new Response("")),
+        data: {},
+      } as Parameters<PagesFunction<Env>>[0]);
+    }
+    if (env.ASSETS && typeof env.ASSETS.fetch === "function") {
+      return env.ASSETS.fetch(request);
+    }
+    return new Response(JSON.stringify({ error: "Endpoint not found." }), {
+      status: 404,
+      headers: { "Content-Type": "application/json" },
+    });
+  },
 };
