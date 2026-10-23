@@ -2,14 +2,15 @@
 //
 // Speech-to-text (dictation) streams audio to the browser vendor's speech
 // service, so callers must gate it behind the user's voice-processing
-// consent. Text-to-speech runs through the device's local voices.
+// consent. Text-to-speech runs through local voices.
 // Both are unavailable outside web browsers or where the browser does not
 // support the API — every helper reports that instead of throwing.
 
 interface SpeechCallbacks {
   onTranscript: (text: string, isFinal: boolean) => void;
-  onError?: () => void;
+  onError?: (errorType?: string) => void;
   onDone?: () => void;
+  onWakeWordDetected?: () => void;
   lang?: string;
 }
 
@@ -18,7 +19,7 @@ type RecognitionInstance = {
   interimResults: boolean;
   maxAlternatives: number;
   onresult: ((event: RecognitionEventLike) => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
   onend: (() => void) | null;
   start: () => void;
   stop: () => void;
@@ -54,11 +55,33 @@ export function isReadAloudAvailable(): boolean {
   return typeof window.speechSynthesis?.speak === 'function';
 }
 
-/** Start one dictation turn. Returns a cancel function. */
+/**
+  * Check browser microphone permission state if navigator.permissions is available.
+  */
+export async function checkMicrophonePermission(): Promise<'granted' | 'denied' | 'prompt' | 'unsupported'> {
+  if (typeof window === 'undefined' || !navigator?.permissions?.query) {
+    return 'unsupported';
+  }
+  try {
+    const result = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+    return result.state;
+  } catch {
+    return 'unsupported';
+  }
+}
+
+/** Detect "Oi" / "ওহে" wake phrase in transcript string */
+export function containsWakePhrase(text: string): boolean {
+  const normalized = text.toLowerCase().trim();
+  const patterns = [/\boi\b/i, /\bওহে\b/i, /\boi\s+jarvis\b/i, /\bhey\s+jarvis\b/i, /\bহাই\b/i];
+  return patterns.some((pattern) => pattern.test(normalized));
+}
+
+/** Start one dictation turn with wake-phrase detection and error handling. Returns a cancel function. */
 export function dictateOnce(callbacks: SpeechCallbacks): () => void {
   const Ctor = recognitionConstructor();
   if (!Ctor) {
-    callbacks.onError?.();
+    callbacks.onError?.('unsupported');
     callbacks.onDone?.();
     return () => undefined;
   }
@@ -85,9 +108,15 @@ export function dictateOnce(callbacks: SpeechCallbacks): () => void {
       if (result.isFinal) finalText += transcript;
       else interimText += transcript;
     }
-    if (finalText || interimText) {
-      callbacks.onTranscript(`${finalText}${interimText}`, finalText.length > 0 && !interimText);
+    const combined = `${finalText}${interimText}`.trim();
+
+    if (combined) {
+      if (containsWakePhrase(combined)) {
+        callbacks.onWakeWordDetected?.();
+      }
+      callbacks.onTranscript(combined, finalText.length > 0 && !interimText);
     }
+
     if (finalText && !interimText) {
       try {
         recognition.stop();
@@ -97,17 +126,19 @@ export function dictateOnce(callbacks: SpeechCallbacks): () => void {
       finish();
     }
   };
-  recognition.onerror = () => {
+
+  recognition.onerror = (evt) => {
     finish();
-    callbacks.onError?.();
+    callbacks.onError?.(evt?.error ?? 'speech_error');
   };
+
   recognition.onend = () => finish();
 
   try {
     recognition.start();
   } catch {
     finish();
-    callbacks.onError?.();
+    callbacks.onError?.('start_failed');
   }
 
   return () => {
@@ -121,13 +152,13 @@ export function dictateOnce(callbacks: SpeechCallbacks): () => void {
 }
 
 /** Speak text through the device's local voices. No audio leaves the device. */
-export function speak(text: string, lang?: string): void {
+export function speak(text: string, lang = 'bn-BD'): void {
   if (!isReadAloudAvailable()) return;
   const clean = text.trim().slice(0, 4000);
   if (!clean) return;
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(clean);
-  if (lang) utterance.lang = lang;
+  utterance.lang = lang;
   window.speechSynthesis.speak(utterance);
 }
 
