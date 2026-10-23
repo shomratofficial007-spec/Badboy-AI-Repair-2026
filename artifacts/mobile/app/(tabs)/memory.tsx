@@ -20,6 +20,7 @@ export default function MemoryScreen() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [search, setSearch] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const filteredMemories = useMemo(() => {
@@ -32,21 +33,40 @@ export default function MemoryScreen() {
     );
   }, [memories, search]);
 
+  const startEditing = (note: { id: string; title: string; content: string }) => {
+    setEditingId(note.id);
+    setTitle(note.title);
+    setContent(note.content);
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setTitle('');
+    setContent('');
+  };
+
   const confirmSave = () => {
     const cleanTitle = title.trim();
     const cleanContent = content.trim();
     if (!cleanTitle || !cleanContent || saving) return;
     Alert.alert(
-      'মেমোরিতে সংরক্ষণ করবেন?',
+      editingId ? 'নোট আপডেট করবেন?' : 'মেমোরিতে সংরক্ষণ করবেন?',
       'এই তথ্যটি কেবল আপনার ডিভাইসের এনক্রিপ্টেড স্টোরেজে থাকবে। AI সার্ভিস বা সার্ভারে পাঠানো হবে না।',
       [
         { text: 'বাতিল', style: 'cancel' },
         {
-          text: 'সংরক্ষণ',
+          text: editingId ? 'আপডেট' : 'সংরক্ষণ',
           onPress: () => {
             setSaving(true);
-            void saveMemory(cleanTitle, cleanContent)
+            const processAction = async () => {
+              if (editingId) {
+                await deleteMemory(editingId);
+              }
+              await saveMemory(cleanTitle, cleanContent);
+            };
+            void processAction()
               .then(() => {
+                setEditingId(null);
                 setTitle('');
                 setContent('');
               })
@@ -97,7 +117,16 @@ export default function MemoryScreen() {
 
       {/* Form Card */}
       <View style={[styles.form, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <Text style={[styles.label, { color: colors.foreground }]}>নতুন মেমোরি তৈরি</Text>
+        <View style={styles.formHeader}>
+          <Text style={[styles.label, { color: colors.foreground }]}>
+            {editingId ? 'মেমোরি নোট সম্পাদনা' : 'নতুন মেমোরি তৈরি'}
+          </Text>
+          {editingId ? (
+            <Pressable onPress={cancelEditing}>
+              <Text style={{ color: colors.destructive, fontSize: 13, fontWeight: '600' }}>বাতিল</Text>
+            </Pressable>
+          ) : null}
+        </View>
         <TextInput
           value={title}
           onChangeText={setTitle}
@@ -130,7 +159,7 @@ export default function MemoryScreen() {
         >
           <Feather name="shield" size={16} color={colors.primaryForeground} />
           <Text style={{ color: colors.primaryForeground, fontWeight: '700' }}>
-            {saving ? 'সংরক্ষণ হচ্ছে…' : 'লোকালে সেভ করুন'}
+            {saving ? 'সংরক্ষণ হচ্ছে…' : editingId ? 'আপডেট করুন' : 'লোকালে সেভ করুন'}
           </Text>
         </Pressable>
       </View>
@@ -166,14 +195,24 @@ export default function MemoryScreen() {
           >
             <View style={styles.noteTop}>
               <Text style={[styles.noteTitle, { color: colors.foreground }]}>{note.title}</Text>
-              <Pressable
-                onPress={() => confirmDelete(note.id, note.title)}
-                accessibilityRole="button"
-                accessibilityLabel={`${note.title} নোট মুছুন`}
-                hitSlop={8}
-              >
-                <Feather name="trash-2" size={16} color={colors.mutedForeground} />
-              </Pressable>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <Pressable
+                  onPress={() => startEditing(note)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${note.title} নোট সম্পাদনা করুন`}
+                  hitSlop={8}
+                >
+                  <Feather name="edit-2" size={16} color={colors.primary} />
+                </Pressable>
+                <Pressable
+                  onPress={() => confirmDelete(note.id, note.title)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${note.title} নোট মুছুন`}
+                  hitSlop={8}
+                >
+                  <Feather name="trash-2" size={16} color={colors.mutedForeground} />
+                </Pressable>
+              </View>
             </View>
             <Text style={[styles.noteBody, { color: colors.mutedForeground }]}>{note.content}</Text>
             <Text style={[styles.date, { color: colors.mutedForeground }]}>
@@ -199,6 +238,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontWeight: '700', letterSpacing: -0.5, marginTop: 4 },
   subtitle: { fontSize: 13, lineHeight: 20, marginTop: 6 },
   form: { borderWidth: 1, borderRadius: 18, padding: 14, marginTop: 20 },
+  formHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   label: { fontSize: 15, fontWeight: '700' },
   titleInput: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, marginTop: 12 },
   noteInput: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, minHeight: 80, textAlignVertical: 'top', marginTop: 8 },

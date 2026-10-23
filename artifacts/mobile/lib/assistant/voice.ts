@@ -70,12 +70,50 @@ export async function checkMicrophonePermission(): Promise<'granted' | 'denied' 
   }
 }
 
-/** Detect "Oi" / "ওহে" wake phrase in transcript string */
+/** Detect "Oi" / "ওহে" / "JARVIS" wake phrase in transcript string */
 export function containsWakePhrase(text: string): boolean {
   const normalized = text.toLowerCase().trim();
-  const patterns = [/\boi\b/i, /\bওহে\b/i, /\boi\s+jarvis\b/i, /\bhey\s+jarvis\b/i, /\bহাই\b/i];
+  const patterns = [
+    /\boi\b/i,
+    /\bওহে\b/i,
+    /\boi\s+jarvis\b/i,
+    /\bhey\s+jarvis\b/i,
+    /\bহাই\s+জারভিস\b/i,
+    /\bজারভিস\b/i,
+    /\bjarvis\b/i,
+  ];
   return patterns.some((pattern) => pattern.test(normalized));
 }
+
+/** User-friendly localized Bangla error messages for voice recognition issues */
+export function getVoiceErrorMessage(errorType?: string): string {
+  switch (errorType) {
+    case 'not-allowed':
+    case 'permission-denied':
+    case 'denied':
+      return 'মাইক্রোফোন ব্যবহারের অনুমতি পাওয়া যায়নি। ব্রাউজার বা ডিভাইসের Settings থেকে Microphone অনুমতি সক্রিয় করুন।';
+    case 'no-speech':
+      return 'কোনো কথা শোনা যায়নি। আবার চেষ্টা করুন।';
+    case 'network':
+      return 'ভয়েস রিকগনিশনের জন্য ইন্টারনেট সংযোগ প্রয়োজন। নেটওয়ার্ক পরীক্ষা করুন।';
+    case 'audio-capture':
+      return 'মাইক্রোফোন ডিভাইসটি পাওয়া যায়নি বা অন্য অ্যাপ ব্যবহার করছে।';
+    case 'aborted':
+      return 'ভয়েস গ্রহণ ব্যবহারকারী দ্বারা বন্ধ করা হয়েছে।';
+    case 'unsupported':
+      return 'এই ব্রাউজারে বা ডিভাইসে Web Speech API সমর্থিত নয়। Google Chrome বা Microsoft Edge ব্যবহার করুন।';
+    default:
+      return 'ভয়েস ইনপুটে সমস্যা হয়েছে। পুনরায় চেষ্টা করুন।';
+  }
+}
+
+/**
+ * Note on Background Listening Limitations:
+ * Web Speech API runs only while the web application page is active in the foreground.
+ * Continuous background listening, lock-screen activation, or hardware wake-word triggering
+ * on mobile devices requires a native Android/iOS background service (e.g. via React Native
+ * Native Modules or Android Foreground Services).
+ */
 
 /** Start one dictation turn with wake-phrase detection and error handling. Returns a cancel function. */
 export function dictateOnce(callbacks: SpeechCallbacks): () => void {

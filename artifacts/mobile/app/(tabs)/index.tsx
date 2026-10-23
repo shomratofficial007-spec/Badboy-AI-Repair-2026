@@ -20,6 +20,7 @@ import { streamReply } from '@/lib/assistant/api';
 import {
   checkMicrophonePermission,
   dictateOnce,
+  getVoiceErrorMessage,
   isDictationAvailable,
   isReadAloudAvailable,
   speak,
@@ -47,19 +48,21 @@ export default function ChatScreen() {
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [wakeDetected, setWakeDetected] = useState(false);
+  const [selectedLang, setSelectedLang] = useState<'bn-BD' | 'en-US'>('bn-BD');
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const stopDictationRef = useRef<(() => void) | null>(null);
 
-  // Audio Visualizer Bar Animations
+  // Audio Visualizer Bar & Core Pulse Animations
   const barAnim1 = useRef(new Animated.Value(12)).current;
   const barAnim2 = useRef(new Animated.Value(24)).current;
   const barAnim3 = useRef(new Animated.Value(18)).current;
   const barAnim4 = useRef(new Animated.Value(30)).current;
+  const corePulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (listening || speaking || busy) {
-      const loop = Animated.loop(
+      const visualizerLoop = Animated.loop(
         Animated.parallel([
           Animated.sequence([
             Animated.timing(barAnim1, { toValue: 32, duration: 300, useNativeDriver: false }),
@@ -77,17 +80,22 @@ export default function ChatScreen() {
             Animated.timing(barAnim4, { toValue: 16, duration: 350, useNativeDriver: false }),
             Animated.timing(barAnim4, { toValue: 34, duration: 350, useNativeDriver: false }),
           ]),
+          Animated.sequence([
+            Animated.timing(corePulse, { toValue: 1.25, duration: 600, useNativeDriver: true }),
+            Animated.timing(corePulse, { toValue: 1, duration: 600, useNativeDriver: true }),
+          ]),
         ])
       );
-      loop.start();
-      return () => loop.stop();
+      visualizerLoop.start();
+      return () => visualizerLoop.stop();
     } else {
       barAnim1.setValue(10);
       barAnim2.setValue(16);
       barAnim3.setValue(12);
       barAnim4.setValue(14);
+      corePulse.setValue(1);
     }
-  }, [listening, speaking, busy, barAnim1, barAnim2, barAnim3, barAnim4]);
+  }, [listening, speaking, busy, barAnim1, barAnim2, barAnim3, barAnim4, corePulse]);
 
   const sendMessage = useCallback(async (rawText: string) => {
     const text = rawText.trim();
@@ -182,7 +190,7 @@ export default function ChatScreen() {
 
     const permState = await checkMicrophonePermission();
     if (permState === 'denied') {
-      setError('মাইক্রোফোন অনুমতি দেয়া হয়নি। ব্রাউজার সেটিংস থেকে অনুমতি দিন।');
+      setError(getVoiceErrorMessage('not-allowed'));
       return;
     }
 
@@ -191,6 +199,7 @@ export default function ChatScreen() {
     setWakeDetected(false);
     const base = draft;
     stopDictationRef.current = dictateOnce({
+      lang: selectedLang,
       onTranscript: (text) => {
         const combined = base ? `${base} ${text}`.trim() : text.trim();
         setDraft(combined.slice(0, 4000));
@@ -199,18 +208,14 @@ export default function ChatScreen() {
         setWakeDetected(true);
       },
       onError: (errType) => {
-        if (errType === 'not-allowed') {
-          setError('মাইক্রোফোন অনুমতি প্রত্যাখিত হয়েছে।');
-        } else {
-          setError('কথা শোনা যায়নি। আবার চেষ্টা করুন।');
-        }
+        setError(getVoiceErrorMessage(errType));
       },
       onDone: () => {
         setListening(false);
         stopDictationRef.current = null;
       },
     });
-  }, [draft, listening, settings.voiceProcessingConsent]);
+  }, [draft, listening, selectedLang, settings.voiceProcessingConsent]);
 
   const toggleReadAloud = useCallback(() => {
     if (speaking) {
@@ -231,7 +236,7 @@ export default function ChatScreen() {
     }
     setError(null);
     setSpeaking(true);
-    speak(lastAssistant.content, 'bn-BD');
+    speak(lastAssistant.content, selectedLang);
     setTimeout(() => setSpeaking(false), 2000);
   }, [messages, speaking]);
 
@@ -256,6 +261,14 @@ export default function ChatScreen() {
     if (speaking) return 'কথা বলছি…';
     if (!settings.onlineAI) return 'অফলাইন মোড';
     return 'JARVIS প্রস্তুত';
+  };
+
+  const getStatusColor = () => {
+    if (listening) return '#00e5ff';
+    if (busy) return '#f59e0b';
+    if (speaking) return '#10b981';
+    if (!settings.onlineAI) return '#ef4444';
+    return '#38bdf8';
   };
 
   const renderMessage = ({ item }: { item: ChatMessage }) => {
@@ -299,21 +312,33 @@ export default function ChatScreen() {
         ]}
       >
         <View style={styles.brand}>
-          <View style={[styles.logo, { backgroundColor: colors.primary }]}>
+          <Animated.View style={[styles.logo, { backgroundColor: colors.primary, transform: [{ scale: corePulse }] }]}>
             <Feather name="cpu" size={20} color={colors.primaryForeground} />
-          </View>
+          </Animated.View>
           <View>
             <View style={styles.titleRow}>
               <Text style={[styles.brandTitle, { color: colors.foreground }]}>JARVIS AI</Text>
-              <View style={[styles.statusBadge, { backgroundColor: listening ? '#0284c7' : busy ? '#d97706' : colors.secondary }]}>
+              <View style={[styles.statusBadge, { backgroundColor: getStatusColor() }]}>
                 <Text style={styles.statusBadgeText}>{getStatusText()}</Text>
               </View>
             </View>
             <Text style={[styles.brandSub, { color: colors.mutedForeground }]}>
-              {settings.onlineAI ? 'OpenRouter Connected · Bangla AI' : 'Local Offline Mode'}
+              {settings.onlineAI ? 'OpenRouter Connected · Bangla Default' : 'Local Offline Mode'}
             </Text>
           </View>
         </View>
+
+        {/* Language Selector Toggle */}
+        <Pressable
+          onPress={() => setSelectedLang((prev) => (prev === 'bn-BD' ? 'en-US' : 'bn-BD'))}
+          style={[styles.langToggle, { borderColor: colors.border, backgroundColor: colors.secondary }]}
+          accessibilityRole="button"
+          accessibilityLabel="ভাষা পরিবর্তন করুন"
+        >
+          <Text style={[styles.langText, { color: colors.primary }]}>
+            {selectedLang === 'bn-BD' ? 'বাংলা' : 'EN'}
+          </Text>
+        </Pressable>
 
         {/* Futuristic Audio Visualizer */}
         <View style={styles.visualizerContainer}>
@@ -451,6 +476,8 @@ const styles = StyleSheet.create({
   brandSub: { fontSize: 11, marginTop: 2 },
   statusBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 },
   statusBadgeText: { fontSize: 10, fontWeight: '600', color: '#ffffff' },
+  langToggle: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, marginHorizontal: 6 },
+  langText: { fontSize: 11, fontWeight: '700' },
   visualizerContainer: { flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: 38, marginHorizontal: 8 },
   visualizerBar: { width: 3, borderRadius: 2 },
   iconButton: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
