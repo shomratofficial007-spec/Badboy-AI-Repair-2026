@@ -138,7 +138,7 @@ function Calendar({
         Chevron: ({ className, orientation, ...props }) => {
           if (orientation === "left") {
             return (
-              <ChevronLeftIcon className={cn("size-4", className)} {...props} />
+              <ChevronLeftIcon className={cn("size-4", className)} {...(props as React.ComponentProps<typeof ChevronLeftIcon>)} />
             )
           }
 
@@ -146,17 +146,17 @@ function Calendar({
             return (
               <ChevronRightIcon
                 className={cn("size-4", className)}
-                {...props}
+                {...(props as React.ComponentProps<typeof ChevronRightIcon>)}
               />
             )
           }
 
           return (
-            <ChevronDownIcon className={cn("size-4", className)} {...props} />
+            <ChevronDownIcon className={cn("size-4", className)} {...(props as React.ComponentProps<typeof ChevronDownIcon>)} />
           )
         },
         DayButton: CalendarDayButton,
-        WeekNumber: ({ children, ...props }) => {
+        WeekNumber: ({ children, weekNumber, date, ...props }: React.ComponentProps<"td"> & { weekNumber?: number; date?: Date }) => {
           return (
             <td {...props}>
               <div className="flex size-[--cell-size] items-center justify-center text-center">
@@ -176,6 +176,7 @@ function CalendarDayButton({
   className,
   day,
   modifiers,
+  children,
   ...props
 }: React.ComponentProps<typeof DayButton>) {
   const defaultClassNames = getDefaultClassNames()
@@ -205,8 +206,10 @@ function CalendarDayButton({
         defaultClassNames.day,
         className
       )}
-      {...props}
-    />
+      {...(props as React.ComponentProps<typeof Button>)}
+    >
+      {children}
+    </Button>
   )
 }
 
