@@ -9,6 +9,44 @@ const MEMORY_PREFIX = 'oi-assistant-memory-';
 
 type MemoryIndexItem = Pick<MemoryNote, 'id' | 'title' | 'createdAt'>;
 
+async function setSecureOrFallback(key: string, value: string): Promise<void> {
+  try {
+    const isAvailable = await SecureStore.isAvailableAsync();
+    if (isAvailable) {
+      await SecureStore.setItemAsync(key, value);
+      return;
+    }
+  } catch {
+    // Fall back to AsyncStorage
+  }
+  await AsyncStorage.setItem(key, value);
+}
+
+async function getSecureOrFallback(key: string): Promise<string | null> {
+  try {
+    const isAvailable = await SecureStore.isAvailableAsync();
+    if (isAvailable) {
+      return await SecureStore.getItemAsync(key);
+    }
+  } catch {
+    // Fall back to AsyncStorage
+  }
+  return await AsyncStorage.getItem(key);
+}
+
+async function deleteSecureOrFallback(key: string): Promise<void> {
+  try {
+    const isAvailable = await SecureStore.isAvailableAsync();
+    if (isAvailable) {
+      await SecureStore.deleteItemAsync(key);
+      return;
+    }
+  } catch {
+    // Fall back to AsyncStorage
+  }
+  await AsyncStorage.removeItem(key);
+}
+
 export async function readLocalState() {
   const [messagesValue, settingsValue, indexValue] = await Promise.all([
     AsyncStorage.getItem(CHAT_KEY),
@@ -27,8 +65,7 @@ export async function readLocalState() {
   const memories = await Promise.all(
     index.map(async (item) => ({
       ...item,
-      content:
-        (await SecureStore.getItemAsync(`${MEMORY_PREFIX}${item.id}`)) ?? '',
+      content: (await getSecureOrFallback(`${MEMORY_PREFIX}${item.id}`)) ?? '',
     })),
   );
 
@@ -51,25 +88,29 @@ async function persistMemoryIndex(memories: MemoryNote[]) {
 }
 
 export async function storeMemoryNote(note: MemoryNote, memories: MemoryNote[]) {
-  await SecureStore.setItemAsync(
-    `${MEMORY_PREFIX}${note.id}`,
-    note.content,
-  );
+  await setSecureOrFallback(`${MEMORY_PREFIX}${note.id}`, note.content);
   await persistMemoryIndex(memories);
 }
 
+export async function updateMemoryNote(updated: MemoryNote, memories: MemoryNote[]) {
+  await setSecureOrFallback(`${MEMORY_PREFIX}${updated.id}`, updated.content);
+  const newMemories = memories.map((item) => (item.id === updated.id ? updated : item));
+  await persistMemoryIndex(newMemories);
+  return newMemories;
+}
+
 export async function removeMemoryNote(id: string, memories: MemoryNote[]) {
-  await SecureStore.deleteItemAsync(`${MEMORY_PREFIX}${id}`);
-  await persistMemoryIndex(memories);
+  await deleteSecureOrFallback(`${MEMORY_PREFIX}${id}`);
+  const newMemories = memories.filter((item) => item.id !== id);
+  await persistMemoryIndex(newMemories);
+  return newMemories;
 }
 
 export async function clearLocalAssistantData() {
   const indexValue = await AsyncStorage.getItem(MEMORY_INDEX_KEY);
   const index = indexValue ? (JSON.parse(indexValue) as MemoryIndexItem[]) : [];
   await Promise.all(
-    index.map((item) =>
-      SecureStore.deleteItemAsync(`${MEMORY_PREFIX}${item.id}`),
-    ),
+    index.map((item) => deleteSecureOrFallback(`${MEMORY_PREFIX}${item.id}`)),
   );
   await AsyncStorage.multiRemove([CHAT_KEY, SETTINGS_KEY, MEMORY_INDEX_KEY]);
 }

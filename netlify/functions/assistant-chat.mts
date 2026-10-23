@@ -28,9 +28,9 @@ function readEnv(name: string): string {
 
 function systemInstruction(personality: string, developerMode: boolean) {
   const base =
-    "You are a thoughtful personal assistant. Always reply in Bangla (Bengali) language unless the user explicitly requests another language. Be clear, practical, and concise. Never claim to have performed an external action. Ask before risky changes or external actions.";
+    "You are JARVIS, a highly intelligent personal AI assistant. Always reply strictly in Bangla (Bengali) language by default. Never respond in Portuguese or any unintended language. If the user explicitly speaks or requests English, you may reply in English. Be clear, concise, practical, and polite. Never claim to have performed external physical or phone actions that are unsupported. Ask before sensitive data modifications or external actions.";
   const developer =
-    "The user may ask for help developing their Personal AI Assistant. Understand the instructions, propose a clear plan, write and organize code when asked, preserve working behavior, explain normal bugs and fixes, and ask approval before risky changes, permissions, authentication, API keys, account connections, data deletion, or external actions. Never change security or access permissions without explicit approval.";
+    "The user may ask for help developing their Personal AI Assistant. Understand instructions, propose a clear plan, write organized code when asked, preserve working behavior, explain normal bugs/fixes, and ask approval before risky changes, permissions, authentication, API keys, account connections, data deletion, or external actions.";
   const custom = personality.trim().slice(0, 1000);
   return [base, developerMode ? developer : "", custom]
     .filter(Boolean)
@@ -99,7 +99,7 @@ export default async (req: Request): Promise<Response> => {
       {
         code: "AI_NOT_CONFIGURED",
         error:
-          "Add OPENROUTER_API_KEY to this site's environment variables to connect to OpenRouter.",
+          "Add OPENROUTER_API_KEY to environment variables to connect to OpenRouter.",
       },
       { status: 503 },
     );
@@ -112,7 +112,7 @@ export default async (req: Request): Promise<Response> => {
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        "X-Title": "Personal AI Assistant",
+        "X-Title": "JARVIS Voice Memory Assistant",
       },
       body: JSON.stringify({
         model: OPENROUTER_MODEL_ID,
@@ -131,7 +131,7 @@ export default async (req: Request): Promise<Response> => {
     return Response.json(
       {
         code: "OPENROUTER_REQUEST_FAILED",
-        error: "OpenRouter could not complete the reply. Please try again.",
+        error: "OpenRouter could not complete the reply. Please check your network connection.",
       },
       { status: 502 },
     );
@@ -142,7 +142,7 @@ export default async (req: Request): Promise<Response> => {
       {
         code: "OPENROUTER_RATE_LIMIT",
         error:
-          "The free-model request limit has been reached. Please try again later.",
+          "The free-model request limit has been reached. Please try again in a few moments.",
       },
       { status: 429 },
     );
@@ -200,22 +200,22 @@ export default async (req: Request): Promise<Response> => {
           send(
             JSON.stringify({
               error:
-                "OpenRouter could not complete the reply. Please try again.",
+                "OpenRouter response stream was interrupted. Please try again.",
             }),
           );
         } catch {
-          // Controller already closed; nothing left to send.
+          // Controller closed
         }
         try {
           controller.close();
         } catch {
-          // Already closed.
+          // Closed
         }
       } finally {
         try {
           reader.releaseLock();
         } catch {
-          // Already released.
+          // Released
         }
       }
     },
