@@ -41,7 +41,16 @@ PORT=4173 BASE_PATH=/ pnpm --filter @workspace/mockup-sandbox build
 
 ## Platform-specific notes
 
-- **Cloudflare Pages:** deploy as Cloudflare Pages with `wrangler.json` targeting `./artifacts/mobile/dist`. The repo includes Cloudflare Pages Functions in `functions/api/[[path]].ts` for streaming OpenRouter AI responses. Deploy using `pnpm run deploy` or `npx wrangler pages deploy ./artifacts/mobile/dist --project-name voice-memory-assistant`. Ensure `OPENROUTER_API_KEY` is configured in your Cloudflare Pages project environment variables.
+- **Cloudflare Pages:** Deploy as **Cloudflare Pages** (not Workers) using the root `wrangler.json` configuration.
+  - **Framework preset:** `None` (or `Custom`). *Do not use framework auto-detection as running framework auto-detection at the root of a pnpm monorepo workspace will cause workspace detection errors.*
+  - **Root Directory:** `/` (repo root). *This allows Cloudflare Pages to detect both the build output in `artifacts/mobile/dist` and the serverless functions in `/functions/api/[[path]].ts`.*
+  - **Build Command:** `pnpm run build`
+  - **Build Output Directory:** `artifacts/mobile/dist`
+  - **Environment Variables:**
+    - `NODE_VERSION`: `22`
+    - `PNPM_VERSION`: `10.8.1`
+    - `OPENROUTER_API_KEY`: `<your_openrouter_api_key>` (required for AI chat streaming).
+  - **CLI Deploy Command:** `pnpm run deploy` or `npx wrangler pages deploy ./artifacts/mobile/dist --project-name voice-memory-assistant`
 - Netlify can host the static frontend, but this workspace's Express API is not automatically converted into Netlify Functions by uploading the ZIP. The API needs a Node host or a deliberate serverless adapter.
 - Vercel, Render, Railway, Fly.io, GitHub Actions, Codespaces, and similar platforms have different project-root, build, start, environment-variable, and database settings. Configure those according to the chosen host.
 - The Expo native Android/iOS app is different from its web export; producing an installable Android/iOS build requires the relevant Expo/EAS or native build pipeline.
