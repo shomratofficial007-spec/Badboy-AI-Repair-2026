@@ -41,8 +41,9 @@ PORT=4173 BASE_PATH=/ pnpm --filter @workspace/mockup-sandbox build
 
 ## Platform-specific notes
 
-- **Cloudflare Pages:** Deploy as **Cloudflare Pages** (not Workers) using the root `wrangler.json` configuration.
-  - **Framework preset:** `None` (or `Custom`). *Do not use framework auto-detection as running framework auto-detection at the root of a pnpm monorepo workspace will cause workspace detection errors.*
+- **Cloudflare Pages:** Deploy as **Cloudflare Pages** (not Cloudflare Workers) using the `wrangler.json` configuration.
+  - **Important:** Ensure the project in Cloudflare Dashboard is created under **Workers & Pages > Create > Pages > Connect to Git** (do NOT choose Workers or Worker Builds). Standard `npx wrangler deploy` is meant for Cloudflare Workers and fails in monorepo roots with `The Cloudflare application detection logic has been run in the root of a workspace instead of targeting a specific project.`
+  - **Framework preset:** `None` (or `Custom`).
   - **Root Directory:** `/` (repo root). *This allows Cloudflare Pages to detect both the build output in `artifacts/mobile/dist` and the serverless functions in `/functions/api/[[path]].ts`.*
   - **Build Command:** `pnpm run build`
   - **Build Output Directory:** `artifacts/mobile/dist`
