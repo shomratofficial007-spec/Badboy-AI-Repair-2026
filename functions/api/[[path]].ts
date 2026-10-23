@@ -8,6 +8,22 @@ interface Env {
   OPENROUTER_API_KEY?: string;
 }
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept",
+};
+
+function jsonResponse(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      ...CORS_HEADERS,
+    },
+  });
+}
+
 function systemInstruction(personality: string, developerMode: boolean) {
   const base =
     "You are JARVIS, a highly intelligent, polite personal AI assistant. Always reply strictly in Bangla (Bengali) language by default. Never respond in Portuguese, Spanish, or any unintended language. If the user explicitly speaks or requests English, you may reply in English. Be clear, precise, helpful, and natural in tone. Never pretend to perform physical or external device actions that are not supported. Ask before sensitive data changes or external actions.";
@@ -43,23 +59,24 @@ function extractDeltas(event: string): { texts: string[]; done: boolean } {
   return { texts, done };
 }
 
+export const onRequestOptions: PagesFunction<Env> = async () => {
+  return new Response(null, {
+    status: 204,
+    headers: CORS_HEADERS,
+  });
+};
+
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   const url = new URL(context.request.url);
   if (url.pathname !== "/api/assistant/chat") {
-    return new Response(JSON.stringify({ error: "Endpoint not found." }), {
-      status: 404,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Endpoint not found." }, 404);
   }
 
   let body: unknown;
   try {
     body = await context.request.json();
   } catch {
-    return new Response(
-      JSON.stringify({ error: "Invalid assistant message body." }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
-    );
+    return jsonResponse({ error: "Invalid assistant message body." }, 400);
   }
 
   const { message, personality = "", developerMode = false } = (body ?? {}) as {
@@ -75,21 +92,19 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     typeof personality !== "string" ||
     typeof developerMode !== "boolean"
   ) {
-    return new Response(
-      JSON.stringify({ error: "Invalid assistant message payload." }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
-    );
+    return jsonResponse({ error: "Invalid assistant message payload." }, 400);
   }
 
   const apiKey = context.env.OPENROUTER_API_KEY || "";
   if (!apiKey) {
-    return new Response(
-      JSON.stringify({
+    console.error("[CF Function Error] OPENROUTER_API_KEY is missing from environment bindings.");
+    return jsonResponse(
+      {
         code: "AI_NOT_CONFIGURED",
         error:
-          "Add OPENROUTER_API_KEY to your Cloudflare Pages environment variables to activate AI chat.",
-      }),
-      { status: 503, headers: { "Content-Type": "application/json" } }
+          "Add OPENROUTER_API_KEY to your Cloudflare environment variables to activate AI chat.",
+      },
+      503
     );
   }
 
@@ -116,32 +131,41 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       }),
     });
   } catch (err) {
-    return new Response(
-      JSON.stringify({
+    console.error("[CF Function Error] OpenRouter fetch failed:", err instanceof Error ? err.message : String(err));
+    return jsonResponse(
+      {
         code: "OPENROUTER_REQUEST_FAILED",
         error: "OpenRouter service could not be reached. Check network connection.",
-      }),
-      { status: 502, headers: { "Content-Type": "application/json" } }
+      },
+      502
     );
   }
 
   if (upstream.status === 429) {
-    return new Response(
-      JSON.stringify({
+    console.error("[CF Function Error] OpenRouter rate limit (429) reached.");
+    return jsonResponse(
+      {
         code: "OPENROUTER_RATE_LIMIT",
         error: "OpenRouter model rate limit reached. Please wait a moment and try again.",
-      }),
-      { status: 429, headers: { "Content-Type": "application/json" } }
+      },
+      429
     );
   }
 
   if (!upstream.ok || !upstream.body) {
-    return new Response(
-      JSON.stringify({
+    let errorText = "";
+    try {
+      errorText = await upstream.text();
+    } catch {
+      // Ignore text read failure
+    }
+    console.error(`[CF Function Error] OpenRouter upstream returned status ${upstream.status}: ${errorText.slice(0, 300)}`);
+    return jsonResponse(
+      {
         code: "OPENROUTER_REQUEST_FAILED",
-        error: "OpenRouter returned an error response. Please try again later.",
-      }),
-      { status: 502, headers: { "Content-Type": "application/json" } }
+        error: `OpenRouter error (${upstream.status}). Please try again later.`,
+      },
+      502
     );
   }
 
@@ -182,7 +206,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         }
         send("[DONE]");
         controller.close();
-      } catch {
+      } catch (streamErr) {
+        console.error("[CF Function Error] Stream reading interrupted:", streamErr instanceof Error ? streamErr.message : String(streamErr));
         try {
           send(
             JSON.stringify({
@@ -207,7 +232,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache, no-transform",
-      "Access-Control-Allow-Origin": "*",
+      ...CORS_HEADERS,
     },
   });
 };

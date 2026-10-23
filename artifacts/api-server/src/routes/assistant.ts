@@ -19,7 +19,7 @@ function systemInstruction(personality: string, developerMode: boolean) {
 function missingKeyResponse(res: Response) {
   res.status(503).json({
     code: "AI_NOT_CONFIGURED",
-    error: "Add OPENROUTER_API_KEY to Replit Secrets to connect to OpenRouter.",
+    error: "Add OPENROUTER_API_KEY to environment variables to connect to OpenRouter.",
   });
 }
 
