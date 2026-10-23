@@ -2,8 +2,8 @@ import { fetch as expoFetch } from 'expo/fetch';
 import type { AssistantSettings } from '@/lib/assistant/types';
 
 function apiUrl(path: string) {
-  // On Netlify (production and previews) the API is a same-origin
-  // Netlify Function, so prefer the page origin when running on web.
+  // On web (Cloudflare Pages, Netlify, or local static preview), the API is a same-origin
+  // route under /api/*, so prefer window.location.origin.
   if (
     typeof window !== 'undefined' &&
     typeof window.location?.origin === 'string' &&
@@ -11,8 +11,7 @@ function apiUrl(path: string) {
   ) {
     return `${window.location.origin}/api${path}`;
   }
-  // Native builds and non-Netlify hosts still reach a separately
-  // deployed API through the configured domain.
+  // Native builds and custom clients reach a separately deployed domain.
   const domain = process.env.EXPO_PUBLIC_DOMAIN;
   if (!domain) throw new Error('The assistant server is not available in this preview.');
   return `https://${domain}/api${path}`;
@@ -39,8 +38,12 @@ export async function streamReply(
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as {
       error?: string;
+      code?: string;
     };
-    throw new Error(body.error ?? 'The assistant could not reply right now.');
+    throw new Error(
+      body.error ??
+        `The assistant could not reply right now (HTTP ${response.status}).`,
+    );
   }
 
   const reader = response.body?.getReader();

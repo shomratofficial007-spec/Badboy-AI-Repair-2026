@@ -51,7 +51,7 @@ PORT=4173 BASE_PATH=/ pnpm --filter @workspace/mockup-sandbox build
     - `NODE_VERSION`: `22`
     - `PNPM_VERSION`: `10.8.1`
     - `OPENROUTER_API_KEY`: `<your_openrouter_api_key>` (required for AI chat streaming).
-  - **CLI Deploy Command:** `pnpm run deploy` or `npx wrangler pages deploy ./artifacts/mobile/dist --project-name voice-memory-assistant`
+  - **CLI Deploy Command:** `pnpm run deploy` or `npx wrangler pages deploy ./artifacts/mobile/dist --project-name badboy`
 - Netlify can host the static frontend, but this workspace's Express API is not automatically converted into Netlify Functions by uploading the ZIP. The API needs a Node host or a deliberate serverless adapter.
 - Vercel, Render, Railway, Fly.io, GitHub Actions, Codespaces, and similar platforms have different project-root, build, start, environment-variable, and database settings. Configure those according to the chosen host.
 - The Expo native Android/iOS app is different from its web export; producing an installable Android/iOS build requires the relevant Expo/EAS or native build pipeline.

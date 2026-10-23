@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "voice-memory-assistant",
+  "name": "badboy",
   "main": "functions/api/[[path]].ts",
   "assets": {
     "directory": "./artifacts/mobile/dist"
