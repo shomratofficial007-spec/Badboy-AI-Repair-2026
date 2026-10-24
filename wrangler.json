@@ -1,12 +1,12 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "badboy",
+  "name": "voice-memory-assistant-net",
   "main": "functions/api/[[path]].ts",
   "assets": {
     "directory": "./artifacts/mobile/dist"
   },
   "build": {
-    "command": "pnpm run build"
+    "command": "corepack enable && pnpm run build"
   },
   "compatibility_date": "2025-02-16",
   "compatibility_flags": ["nodejs_compat"]
