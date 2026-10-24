@@ -66,9 +66,19 @@ export const onRequestOptions: PagesFunction<Env> = async () => {
   });
 };
 
+export const onRequestGet: PagesFunction<Env> = async (context) => {
+  const url = new URL(context.request.url);
+  const pathname = url.pathname.replace(/\/+$/, "");
+  if (pathname === "/api/healthz" || pathname === "/api/health") {
+    return jsonResponse({ status: "ok" });
+  }
+  return jsonResponse({ error: "Endpoint not found." }, 404);
+};
+
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   const url = new URL(context.request.url);
-  if (url.pathname !== "/api/assistant/chat") {
+  const pathname = url.pathname.replace(/\/+$/, "");
+  if (pathname !== "/api/assistant/chat") {
     return jsonResponse({ error: "Endpoint not found." }, 404);
   }
 
