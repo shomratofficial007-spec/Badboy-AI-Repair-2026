@@ -1,1 +1,0 @@
-This folder contains the built output assets for the worker "badboy" generated at 2026-10-24T15:50:53.507Z.
