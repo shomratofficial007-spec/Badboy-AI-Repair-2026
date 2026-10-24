@@ -8,6 +8,15 @@ export interface Env {
   OPENROUTER_API_KEY?: string;
 }
 
+export type PagesContext<E = Env> = {
+  request: Request;
+  env: E;
+};
+
+export type PagesFunctionHandler<E = Env> = (
+  context: PagesContext<E>
+) => Promise<Response> | Response;
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -276,15 +285,15 @@ export async function handleApiRequest(
 }
 
 // Cloudflare Pages Function exports
-export const onRequestOptions: PagesFunction<Env> = async (context) => {
+export const onRequestOptions: PagesFunctionHandler<Env> = async (context) => {
   return handleApiRequest(context.request, context.env);
 };
 
-export const onRequestPost: PagesFunction<Env> = async (context) => {
+export const onRequestPost: PagesFunctionHandler<Env> = async (context) => {
   return handleApiRequest(context.request, context.env);
 };
 
-export const onRequest: PagesFunction<Env> = async (context) => {
+export const onRequest: PagesFunctionHandler<Env> = async (context) => {
   return handleApiRequest(context.request, context.env);
 };
 
