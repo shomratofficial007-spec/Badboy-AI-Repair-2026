@@ -58,6 +58,7 @@ export const onRequestOptions = async () => {
 export const onRequestGet = async (context) => {
     const url = new URL(context.request.url);
     const pathname = url.pathname.replace(/\/+$/, "");
+    console.log(`[CF Request] GET ${pathname}`);
     if (pathname === "/api/healthz" || pathname === "/api/health") {
         return jsonResponse({ status: "ok" });
     }
@@ -66,6 +67,7 @@ export const onRequestGet = async (context) => {
 export const onRequestPost = async (context) => {
     const url = new URL(context.request.url);
     const pathname = url.pathname.replace(/\/+$/, "");
+    console.log(`[CF Request] POST ${pathname}`);
     if (pathname !== "/api/assistant/chat") {
         return jsonResponse({ error: "Endpoint not found." }, 404);
     }

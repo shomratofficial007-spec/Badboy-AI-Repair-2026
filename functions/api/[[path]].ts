@@ -69,6 +69,7 @@ export const onRequestOptions: PagesFunction<Env> = async () => {
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   const url = new URL(context.request.url);
   const pathname = url.pathname.replace(/\/+$/, "");
+  console.log(`[CF Request] GET ${pathname}`);
   if (pathname === "/api/healthz" || pathname === "/api/health") {
     return jsonResponse({ status: "ok" });
   }
@@ -78,6 +79,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   const url = new URL(context.request.url);
   const pathname = url.pathname.replace(/\/+$/, "");
+  console.log(`[CF Request] POST ${pathname}`);
   if (pathname !== "/api/assistant/chat") {
     return jsonResponse({ error: "Endpoint not found." }, 404);
   }
