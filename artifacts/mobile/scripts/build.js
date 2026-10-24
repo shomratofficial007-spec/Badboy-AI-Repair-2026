@@ -25,8 +25,56 @@ if (!isReplitEnvironment) {
     console.error('Portable Expo web export failed:', error.message);
     process.exitCode = 1;
   });
-  child.on('exit', (code) => { process.exitCode = code ?? 1; });
-  // Stop this legacy build script after launching the portable build.
+  child.on('exit', (code) => {
+    if (code !== 0) {
+      process.exitCode = code ?? 1;
+      return;
+    }
+
+    const workspaceRoot = (function findRoot(dir) {
+      while (dir !== path.dirname(dir)) {
+        if (fs.existsSync(path.join(dir, 'pnpm-workspace.yaml'))) return dir;
+        dir = path.dirname(dir);
+      }
+      return projectRoot;
+    })(projectRoot);
+
+    const tempDir = path.join(workspaceRoot, 'dist-worker-temp');
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+
+    console.log('Bundling Cloudflare Pages functions into _worker.js...');
+    const fnChild = spawn(
+      'npx',
+      ['wrangler', 'pages', 'functions', 'build', '--outdir', 'dist-worker-temp'],
+      { stdio: 'inherit', cwd: workspaceRoot },
+    );
+
+    fnChild.on('error', (err) => {
+      console.error('Failed to run wrangler pages functions build:', err.message);
+      process.exitCode = 1;
+    });
+
+    fnChild.on('exit', (fnCode) => {
+      if (fnCode === 0) {
+        const compiledJS = path.join(tempDir, 'index.js');
+        const targetWorker = path.join(projectRoot, 'dist', '_worker.js');
+        if (fs.existsSync(compiledJS)) {
+          fs.copyFileSync(compiledJS, targetWorker);
+          fs.rmSync(tempDir, { recursive: true, force: true });
+          console.log('Successfully bundled Cloudflare Pages worker at dist/_worker.js');
+          process.exitCode = 0;
+        } else {
+          console.error('Compiled function bundle not found at', compiledJS);
+          process.exitCode = 1;
+        }
+      } else {
+        console.error('Cloudflare Pages functions build failed with code:', fnCode);
+        process.exitCode = fnCode ?? 1;
+      }
+    });
+  });
   return;
 }
 

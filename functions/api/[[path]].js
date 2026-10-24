@@ -55,9 +55,18 @@ export const onRequestOptions = async () => {
         headers: CORS_HEADERS,
     });
 };
+export const onRequestGet = async (context) => {
+    const url = new URL(context.request.url);
+    const pathname = url.pathname.replace(/\/+$/, "");
+    if (pathname === "/api/healthz" || pathname === "/api/health") {
+        return jsonResponse({ status: "ok" });
+    }
+    return jsonResponse({ error: "Endpoint not found." }, 404);
+};
 export const onRequestPost = async (context) => {
     const url = new URL(context.request.url);
-    if (url.pathname !== "/api/assistant/chat") {
+    const pathname = url.pathname.replace(/\/+$/, "");
+    if (pathname !== "/api/assistant/chat") {
         return jsonResponse({ error: "Endpoint not found." }, 404);
     }
     let body;
