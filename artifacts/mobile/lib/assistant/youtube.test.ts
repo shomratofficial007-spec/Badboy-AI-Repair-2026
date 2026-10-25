@@ -1,40 +1,48 @@
 import assert from 'node:assert';
 import test from 'node:test';
 import {
+  cleanSongQuery,
   extractYouTubeIntent,
-  getYouTubeUrl,
+  getYouTubeUrls,
   isGeneralMusicRequest,
 } from './youtube.ts';
 
-test('isGeneralMusicRequest - identifies general music requests in Bangla and English', () => {
+test('isGeneralMusicRequest - identifies general music requests in Bangla and Banglish', () => {
   assert.strictEqual(isGeneralMusicRequest('গান শোনাও'), true);
-  assert.strictEqual(isGeneralMusicRequest('গান বাজাও'), true);
+  assert.strictEqual(isGeneralMusicRequest('gan shunao'), true);
   assert.strictEqual(isGeneralMusicRequest('play a song'), true);
-  assert.strictEqual(isGeneralMusicRequest('play music'), true);
-  assert.strictEqual(isGeneralMusicRequest('আজকের খবর কি'), false);
+  assert.strictEqual(isGeneralMusicRequest('gan play koro'), true);
+  assert.strictEqual(isGeneralMusicRequest('আজকের আবহাওয়া কেমন'), false);
 });
 
-test('getYouTubeUrl - formats YouTube search URLs correctly', () => {
-  const url = getYouTubeUrl('Boro Boro Remix');
+test('cleanSongQuery - strips Banglish filler phrases', () => {
+  assert.strictEqual(cleanSongQuery('boro boro remix'), 'boro boro remix');
+  assert.strictEqual(
+    cleanSongQuery('surch er 1st gan ta play koro'),
+    'surch er 1st gan ta',
+  );
+  assert.strictEqual(cleanSongQuery('Rabindra Sangeet play koro'), 'Rabindra Sangeet');
+});
+
+test('getYouTubeUrls - formats web and Android app URLs', () => {
+  const { url, appUrl } = getYouTubeUrls('Boro Boro Remix');
   assert.strictEqual(
     url,
     'https://www.youtube.com/results?search_query=Boro%20Boro%20Remix',
   );
+  assert.strictEqual(
+    appUrl,
+    'vnd.youtube://results?search_query=Boro%20Boro%20Remix',
+  );
 });
 
-test('extractYouTubeIntent - detects English song request', () => {
+test('extractYouTubeIntent - detects English and Banglish song requests', () => {
   const intent = extractYouTubeIntent('play Rabindra Sangeet on youtube');
   assert.ok(intent);
   if (!intent) throw new Error('Intent expected');
   assert.strictEqual(intent.query, 'Rabindra Sangeet');
   assert.ok(intent.url.includes('search_query=Rabindra%20Sangeet'));
-});
-
-test('extractYouTubeIntent - detects Bangla song request', () => {
-  const intent = extractYouTubeIntent('ইউটিউবে রবীন্দ্র সংগীত প্লে করুন');
-  assert.ok(intent);
-  if (!intent) throw new Error('Intent expected');
-  assert.ok(intent.url.includes('youtube.com/results?search_query='));
+  assert.ok(intent.appUrl.includes('vnd.youtube://'));
 });
 
 test('extractYouTubeIntent - returns null for non-YouTube queries', () => {

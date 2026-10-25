@@ -17,8 +17,9 @@ import {
   View,
 } from 'react-native';
 import {
+  cleanSongQuery,
   extractYouTubeIntent,
-  getYouTubeUrl,
+  getYouTubeUrls,
   isGeneralMusicRequest,
 } from '@/lib/assistant/youtube';
 import { useAssistant } from '@/context/AssistantContext';
@@ -119,20 +120,19 @@ export default function ChatScreen() {
 
     if (awaitingSongName) {
       setAwaitingSongName(false);
-      const url = getYouTubeUrl(text);
+      const cleanTitle = cleanSongQuery(text);
+      const { url, appUrl } = getYouTubeUrls(cleanTitle);
       answer = {
         ...answer,
-        content: `"${text}" গানটি ইউটিউবে অনুসন্ধান করে চালানো হচ্ছে...`,
+        content: `"${cleanTitle}" গানটি ইউটিউবে প্লে করা হচ্ছে...`,
       };
       setMessages([...messages, userMessage, answer]);
       setBusy(false);
       if (Platform.OS === 'web' && isReadAloudAvailable()) {
-        speak(`"${text}" গানটি ইউটিউবে প্লে করা হচ্ছে`, selectedLang);
+        speak(`"${cleanTitle}" গানটি ইউটিউবে প্লে করা হচ্ছে`, selectedLang);
       }
       setTimeout(() => {
-        Linking.openURL(url).catch(() => {
-          setError('YouTube লিঙ্কটি খোলা যায়নি।');
-        });
+        void openYouTubeUrl(url, appUrl);
       }, 800);
       return;
     }
@@ -330,10 +330,19 @@ export default function ChatScreen() {
     return '#38bdf8';
   };
 
-  const handleOpenYouTube = (url: string) => {
-    Linking.openURL(url).catch(() => {
-      setError('YouTube লিঙ্কটি খোলা যায়নি।');
-    });
+  const openYouTubeUrl = async (webUrl: string, appUrl: string) => {
+    try {
+      const canApp = await Linking.canOpenURL(appUrl).catch(() => false);
+      if (canApp) {
+        await Linking.openURL(appUrl);
+      } else {
+        await Linking.openURL(webUrl);
+      }
+    } catch {
+      Linking.openURL(webUrl).catch(() => {
+        setError('YouTube লিঙ্কটি খোলা যায়নি।');
+      });
+    }
   };
 
   const renderMessage = ({ item }: { item: ChatMessage }) => {
@@ -357,16 +366,16 @@ export default function ChatScreen() {
           </Text>
           {ytIntent ? (
             <Pressable
-              onPress={() => handleOpenYouTube(ytIntent.url)}
+              onPress={() => void openYouTubeUrl(ytIntent.url, ytIntent.appUrl)}
               style={({ pressed }) => [
                 styles.ytButton,
                 { backgroundColor: colors.destructive, opacity: pressed ? 0.8 : 1 },
               ]}
               accessibilityRole="button"
-              accessibilityLabel={`YouTube-এ ${ytIntent.query} অনুসন্ধান করুন`}
+              accessibilityLabel={`YouTube-এ ${ytIntent.query} খুলুন`}
             >
               <Feather name="youtube" size={16} color="#ffffff" />
-              <Text style={styles.ytButtonText}>YouTube-এ "{ytIntent.query}" অনুসন্ধান করুন</Text>
+              <Text style={styles.ytButtonText}>YouTube-এ "{ytIntent.query}" প্লে করুন</Text>
             </Pressable>
           ) : null}
         </View>
