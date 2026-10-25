@@ -25,6 +25,7 @@ import {
 } from '@/lib/assistant/telegram';
 import {
   DevPlan,
+  ModuleCategory,
   PRResult,
   createGitHubPullRequest,
   generateDevelopmentPlan,
@@ -54,7 +55,8 @@ export default function SettingsScreen() {
   const [telegramBusy, setTelegramBusy] = useState(false);
   const [telegramError, setTelegramError] = useState<string | null>(null);
 
-  // Developer Mode States
+  // Developer Control Center States
+  const [activeDevTab, setActiveDevTab] = useState<ModuleCategory>('self');
   const [githubToken, setGithubToken] = useState('');
   const [githubTokenDraft, setGithubTokenDraft] = useState('');
   const [featureRequestInput, setFeatureRequestInput] = useState('');
@@ -63,6 +65,7 @@ export default function SettingsScreen() {
   const [devStatusLog, setDevStatusLog] = useState<string[]>([]);
   const [prResult, setPrResult] = useState<PRResult | null>(null);
   const [devError, setDevError] = useState<string | null>(null);
+  const [devHistory, setDevHistory] = useState<Array<{ plan: DevPlan; prUrl?: string; date: string }>>([]);
 
   useEffect(() => {
     let active = true;
@@ -105,13 +108,14 @@ export default function SettingsScreen() {
     setPrResult(null);
     const plan = generateDevelopmentPlan(prompt);
     setCurrentPlan(plan);
-    setDevStatusLog([`[${new Date().toISOString().slice(11, 19)}] পরিকল্পনা তৈরি হয়েছে: "${plan.title}"`]);
+    setActiveDevTab(plan.category);
+    setDevStatusLog([`[${new Date().toISOString().slice(11, 19)}] পরিকল্পনা প্রস্তুত (${plan.category.toUpperCase()}): "${plan.title}"`]);
   };
 
   const handleExecutePlanAndPR = async () => {
     if (!currentPlan) return;
     if (!githubToken) {
-      setDevError('GitHub Personal Access Token প্রয়োজন। অনুগ্রহ করে নিচে আপনার PAT সংযোগ করুন।');
+      setDevError('GitHub Personal Access Token প্রয়োজন। নিচে আপনার PAT সেভ করুন।');
       return;
     }
 
@@ -125,7 +129,7 @@ export default function SettingsScreen() {
           onPress: async () => {
             setDevBusy(true);
             setDevError(null);
-            setDevStatusLog((prev) => [...prev, `[${new Date().toISOString().slice(11, 19)}] ফাইল সংশোধন ও সার্ভিস চেকিং চলছে...`]);
+            setDevStatusLog((prev) => [...prev, `[${new Date().toISOString().slice(11, 19)}] সোর্স কোড ও ব্রাঞ্চ যাচাই চলছে...`]);
 
             try {
               const res = await createGitHubPullRequest({
@@ -137,7 +141,9 @@ export default function SettingsScreen() {
               if (res.logs && res.logs.length) {
                 setDevStatusLog((prev) => [...prev, ...res.logs]);
               }
-              if (!res.success) {
+              if (res.success) {
+                setDevHistory((prev) => [{ plan: currentPlan, prUrl: res.prUrl, date: new Date().toLocaleTimeString() }, ...prev]);
+              } else {
                 setDevError(res.error || 'Pull Request তৈরি করা ব্যর্থ হয়েছে।');
               }
             } catch (err) {
@@ -299,27 +305,70 @@ export default function SettingsScreen() {
         />
       </View>
 
-      {/* Autonomous Developer Mode Section */}
+      {/* Developer Control Center */}
       <View style={[styles.section, sectionCard]}>
         <View style={styles.sectionTitleRow}>
           <Feather name="code" size={17} color={colors.primary} />
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Develop by My Instructions</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Develop Control Center</Text>
         </View>
         <SettingSwitch
           colors={colors}
           title="Develop mode"
-          subtitle="স্বয়ংক্রিয় ফিচার ডেভেলপমেন্ট, প্ল্যানিং, টাইপচেক এবং GitHub Pull Request ওয়ার্কফ্লো।"
+          subtitle="ওয়েব ডেভেলপমেন্ট, অ্যান্ড্রয়েড এপিকে ও ব্যাডবয় সেলফ-ডেভেলপমেন্ট ওয়ার্কস্পেস।"
           value={settings.developerMode}
           onValueChange={(value) => updateSettings({ developerMode: value })}
         />
 
         {settings.developerMode ? (
           <View style={{ marginTop: 12, gap: 10 }}>
-            <Text style={[styles.label, { color: colors.foreground }]}>ফিচারের বর্ণনা বা নির্দেশনা দিন (বাংলা/English)</Text>
+            {/* Navigation Modules Tabs */}
+            <View style={styles.tabBar}>
+              {[
+                { id: 'self', label: 'Self Dev', icon: 'cpu' },
+                { id: 'web', label: 'Web Dev', icon: 'globe' },
+                { id: 'android', label: 'Android APK', icon: 'smartphone' },
+              ].map((tab) => (
+                <Pressable
+                  key={tab.id}
+                  onPress={() => setActiveDevTab(tab.id as ModuleCategory)}
+                  style={[
+                    styles.tabButton,
+                    {
+                      backgroundColor: activeDevTab === tab.id ? colors.primary : colors.secondary,
+                    },
+                  ]}
+                >
+                  <Feather
+                    name={tab.icon as any}
+                    size={13}
+                    color={activeDevTab === tab.id ? colors.primaryForeground : colors.secondaryForeground}
+                  />
+                  <Text
+                    style={[
+                      styles.tabText,
+                      {
+                        color: activeDevTab === tab.id ? colors.primaryForeground : colors.secondaryForeground,
+                      },
+                    ]}
+                  >
+                    {tab.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {/* Prompt Input Box */}
+            <Text style={[styles.label, { color: colors.foreground, marginTop: 4 }]}>
+              {activeDevTab === 'web'
+                ? 'ওয়েব নির্দেশিকা (যেমন: Build a website for my Telegram channel)'
+                : activeDevTab === 'android'
+                ? 'অ্যান্ড্রয়েড নির্দেশিকা (যেমন: Create an Android app and prepare an APK)'
+                : 'সেলফ নির্দেশিকা (যেমন: Badboy, add a new reminder feature to yourself)'}
+            </Text>
             <TextInput
               value={featureRequestInput}
               onChangeText={setFeatureRequestInput}
-              placeholder="যেমন: Badboy, add a new reminder feature to yourself."
+              placeholder="বাংলা বা ইংরেজিতে আপনার নির্দেশনা লিখুন…"
               placeholderTextColor={colors.mutedForeground}
               multiline
               style={[styles.telegramInput, { color: colors.foreground, borderColor: colors.input, minHeight: 60 }]}
@@ -329,14 +378,21 @@ export default function SettingsScreen() {
               disabled={!featureRequestInput.trim() || devBusy}
               style={[styles.primaryButton, { backgroundColor: colors.primary, opacity: !featureRequestInput.trim() || devBusy ? 0.5 : 1 }]}
             >
-              <Feather name="cpu" size={15} color={colors.primaryForeground} />
-              <Text style={{ color: colors.primaryForeground, fontWeight: '700' }}>পরিকল্পনা তৈরি করুন</Text>
+              <Feather name="play" size={15} color={colors.primaryForeground} />
+              <Text style={{ color: colors.primaryForeground, fontWeight: '700' }}>প্ল্যান ও ওয়ার্কফ্লো তৈরি করুন</Text>
             </Pressable>
 
+            {/* Current Plan Viewer */}
             {currentPlan ? (
               <View style={[styles.planCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
-                <Text style={[styles.planTitle, { color: colors.primary }]}>{currentPlan.title}</Text>
-                <Text style={[styles.body, { color: colors.foreground, marginTop: 4 }]}>{currentPlan.featureDescription}</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={[styles.planTitle, { color: colors.primary }]}>{currentPlan.title}</Text>
+                  <View style={[styles.categoryPill, { backgroundColor: colors.secondary }]}>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: colors.secondaryForeground }}>{currentPlan.category.toUpperCase()}</Text>
+                  </View>
+                </View>
+
+                <Text style={[styles.body, { color: colors.foreground, marginTop: 6 }]}>{currentPlan.featureDescription}</Text>
 
                 <Text style={[styles.label, { color: colors.foreground, marginTop: 10 }]}>পরিবর্তনযোগ্য ফাইলসমূহ:</Text>
                 {currentPlan.filesToModify.map((f) => (
@@ -364,6 +420,38 @@ export default function SettingsScreen() {
                   {devBusy ? <ActivityIndicator size="small" color={colors.primaryForeground} /> : <Feather name="git-pull-request" size={15} color={colors.primaryForeground} />}
                   <Text style={{ color: colors.primaryForeground, fontWeight: '700' }}>GitHub-এ PR তৈরি করুন</Text>
                 </Pressable>
+              </View>
+            ) : null}
+
+            {/* Android APK & EAS CLI Guidelines Card */}
+            {activeDevTab === 'android' ? (
+              <View style={[styles.infoCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Feather name="smartphone" size={16} color={colors.primary} />
+                  <Text style={[styles.label, { color: colors.foreground }]}>Android APK / AAB বিল্ড কনফিগারেশন</Text>
+                </View>
+                <Text style={[styles.body, { color: colors.mutedForeground, marginTop: 6 }]}>
+                  Expo/EAS বিল্ড প্রফাইল সম্পূর্ণ কনফিগার করা আছে। টার্মিনালে সরাসরি নিচের কমান্ড দিয়ে APK ফাইল তৈরি করা যাবে:
+                </Text>
+                <Text style={[styles.logText, { color: colors.primary, marginTop: 4 }]}>
+                  npx eas-cli build --platform android --profile preview
+                </Text>
+              </View>
+            ) : null}
+
+            {/* Web Dev & Cloudflare Pages Guidelines Card */}
+            {activeDevTab === 'web' ? (
+              <View style={[styles.infoCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Feather name="globe" size={16} color={colors.primary} />
+                  <Text style={[styles.label, { color: colors.foreground }]}>Cloudflare Pages হোস্ট অ্যান্ড ডিপ্লয়</Text>
+                </View>
+                <Text style={[styles.body, { color: colors.mutedForeground, marginTop: 6 }]}>
+                  Cloudflare Pages Functions এবং Static Web Export সমন্বিত রয়েছে। ডিপ্লয় করতে কমান্ড রান করুন:
+                </Text>
+                <Text style={[styles.logText, { color: colors.primary, marginTop: 4 }]}>
+                  pnpm run build && pnpm run deploy
+                </Text>
               </View>
             ) : null}
 
@@ -427,6 +515,22 @@ export default function SettingsScreen() {
                 ))}
               </View>
             ) : null}
+
+            {devHistory.length > 0 ? (
+              <View style={{ marginTop: 10 }}>
+                <Text style={[styles.label, { color: colors.foreground }]}>পূর্ববর্তী ডেভেলপমেন্ট হিস্ট্রি:</Text>
+                {devHistory.map((item, idx) => (
+                  <View key={idx} style={[styles.historyItem, { borderColor: colors.border }]}>
+                    <Text style={[styles.body, { color: colors.foreground, fontWeight: '600' }]}>{item.plan.title} ({item.date})</Text>
+                    {item.prUrl ? (
+                      <Pressable onPress={() => void Linking.openURL(item.prUrl!)}>
+                        <Text style={{ color: colors.primary, fontSize: 12, textDecorationLine: 'underline' }}>PR লিঙ্ক খুলুন</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+            ) : null}
           </View>
         ) : (
           <Text style={[styles.smallNote, { color: colors.mutedForeground }]}>
@@ -449,7 +553,7 @@ export default function SettingsScreen() {
         />
         <View style={[styles.rule, { backgroundColor: colors.border }]} />
         <Text style={[styles.body, { color: colors.mutedForeground }]}>
-          নির্বাচিত OpenRouter free model সরাসরি অডিও বার্তা নিতে পারে না, তাই চ্যাটে মাইক চাপলে ব্রাউজারের ভয়েস টাইপিং লেখায় রূপ নেয়; স্পিকার চাপলে শেষ উত্তর ডিভাইসেই পড়ে শোনানো হয়।
+          নির্বাচিত OpenRouter free model সরাসরি অডিও বার্তা নিতে পারে না, তাই চ্যাটে মাইক চাপলে ব্রাউজারের ভয়েস টাইপিং লেখায় রূপ নেয়; স্পিকার চাপলে শেষ উত্তর ডিভাইসে পড়ে শোনানো হয়।
         </Text>
         <View style={[styles.wakeCard, { backgroundColor: colors.accent }]}>
           <Feather name="moon" size={16} color={colors.accentForeground} />
@@ -612,9 +716,15 @@ const styles = StyleSheet.create({
   messageSender: { fontSize: 13, fontWeight: '700', marginBottom: 4 },
   errorText: { fontSize: 12, lineHeight: 18, marginTop: 9 },
   dangerButton: { borderWidth: 1, borderRadius: 14, minHeight: 46, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 },
-  planCard: { borderWidth: 1, borderRadius: 14, padding: 12, marginTop: 12 },
+  tabBar: { flexDirection: 'row', gap: 6, marginBottom: 8 },
+  tabButton: { flex: 1, minHeight: 36, borderRadius: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  tabText: { fontSize: 12, fontWeight: '700' },
+  categoryPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  planCard: { borderWidth: 1, borderRadius: 14, padding: 12, marginTop: 10 },
   planTitle: { fontSize: 15, fontWeight: '700' },
+  infoCard: { borderWidth: 1, borderRadius: 14, padding: 12, marginTop: 10 },
   prSuccessCard: { borderWidth: 1, borderRadius: 14, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
   logBox: { borderWidth: 1, borderRadius: 12, padding: 10, marginTop: 10, gap: 4 },
   logText: { fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+  historyItem: { borderBottomWidth: 1, paddingVertical: 8, gap: 2 },
 });
