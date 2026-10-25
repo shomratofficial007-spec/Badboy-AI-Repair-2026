@@ -15,6 +15,34 @@ test("onRequestGet - health check endpoint returns status ok", async () => {
   assert.deepStrictEqual(json, { status: "ok" });
 });
 
+test("onRequestGet - health check endpoint without leading /api prefix returns status ok", async () => {
+  const context = {
+    request: new Request("https://example.com/healthz"),
+    env: {},
+  } as any;
+
+  const response = await onRequestGet(context);
+  assert.strictEqual(response.status, 200);
+  const json = (await response.json()) as any;
+  assert.deepStrictEqual(json, { status: "ok" });
+});
+
+test("onRequestPost - handles assistant/chat without leading /api prefix", async () => {
+  const context = {
+    request: new Request("https://example.com/assistant/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: "Hello" }),
+    }),
+    env: {},
+  } as any;
+
+  const response = await onRequestPost(context);
+  assert.strictEqual(response.status, 503);
+  const json = (await response.json()) as any;
+  assert.strictEqual(json.code, "AI_NOT_CONFIGURED");
+});
+
 test("onRequestGet - health check endpoint with trailing slash returns status ok", async () => {
   const context = {
     request: new Request("https://example.com/api/healthz/"),

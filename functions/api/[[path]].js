@@ -51,7 +51,10 @@ function extractDeltas(event) {
 }
 export async function handleApiRequest(request, env) {
     const url = new URL(request.url);
-    const pathname = url.pathname.replace(/\/+$/, "");
+    const rawPathname = url.pathname.replace(/\/+$/, "");
+    const pathname = rawPathname.startsWith("/api")
+        ? rawPathname
+        : `/api${rawPathname.startsWith("/") ? rawPathname : `/${rawPathname}`}`;
     if (request.method === "OPTIONS") {
         return new Response(null, { status: 204, headers: CORS_HEADERS });
     }
@@ -219,7 +222,11 @@ export const onRequestPost = async (context) => {
 export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
-        if (url.pathname.startsWith("/api/")) {
+        if (url.pathname.startsWith("/api/") ||
+            url.pathname === "/api" ||
+            url.pathname.startsWith("/assistant/") ||
+            url.pathname === "/healthz" ||
+            url.pathname === "/health") {
             return handleApiRequest(request, env);
         }
         const assets = env.ASSETS;
