@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as SecureStore from 'expo-secure-store';
 import type { AssistantSettings, ChatMessage, MemoryNote } from './types';
 
 const CHAT_KEY = 'oi-assistant-chat-v1';
@@ -11,38 +10,38 @@ type MemoryIndexItem = Pick<MemoryNote, 'id' | 'title' | 'createdAt'>;
 
 async function setSecureOrFallback(key: string, value: string): Promise<void> {
   try {
-    const isAvailable = await SecureStore.isAvailableAsync();
-    if (isAvailable) {
+    const SecureStore = await import('expo-secure-store').catch(() => null);
+    if (SecureStore && (await SecureStore.isAvailableAsync().catch(() => false))) {
       await SecureStore.setItemAsync(key, value);
       return;
     }
   } catch {
-    // Fall back to AsyncStorage
+    // Fall back
   }
   await AsyncStorage.setItem(key, value);
 }
 
 async function getSecureOrFallback(key: string): Promise<string | null> {
   try {
-    const isAvailable = await SecureStore.isAvailableAsync();
-    if (isAvailable) {
+    const SecureStore = await import('expo-secure-store').catch(() => null);
+    if (SecureStore && (await SecureStore.isAvailableAsync().catch(() => false))) {
       return await SecureStore.getItemAsync(key);
     }
   } catch {
-    // Fall back to AsyncStorage
+    // Fall back
   }
   return await AsyncStorage.getItem(key);
 }
 
 async function deleteSecureOrFallback(key: string): Promise<void> {
   try {
-    const isAvailable = await SecureStore.isAvailableAsync();
-    if (isAvailable) {
+    const SecureStore = await import('expo-secure-store').catch(() => null);
+    if (SecureStore && (await SecureStore.isAvailableAsync().catch(() => false))) {
       await SecureStore.deleteItemAsync(key);
       return;
     }
   } catch {
-    // Fall back to AsyncStorage
+    // Fall back
   }
   await AsyncStorage.removeItem(key);
 }
@@ -89,7 +88,7 @@ async function persistMemoryIndex(memories: MemoryNote[]) {
 
 export async function storeMemoryNote(note: MemoryNote, memories: MemoryNote[]) {
   await setSecureOrFallback(`${MEMORY_PREFIX}${note.id}`, note.content);
-  await persistMemoryIndex(memories);
+  await persistMemoryIndex([...memories, note]);
 }
 
 export async function updateMemoryNote(updated: MemoryNote, memories: MemoryNote[]) {

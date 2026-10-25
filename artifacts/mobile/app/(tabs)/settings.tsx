@@ -115,7 +115,7 @@ export default function SettingsScreen() {
     try {
       const res = await executeAgentTask(prompt, settings.onlineAI, userConfirmed);
       setAgentResult(res);
-      if (res.state === 'completed' && res.outputData?.action === 'open_youtube') {
+      if (res.state === 'completed' && (res.outputData?.action === 'open_youtube_search' || res.outputData?.action === 'open_youtube')) {
         const query = encodeURIComponent(String(res.outputData.query || prompt));
         Linking.openURL(`https://www.youtube.com/results?search_query=${query}`).catch(() => {});
       }

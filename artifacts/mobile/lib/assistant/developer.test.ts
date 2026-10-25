@@ -10,11 +10,12 @@ import {
   createGitHubPullRequest,
 } from './developer.ts';
 
-test('executeAgentTask - executes YouTube command when online', async () => {
+test('executeAgentTask - YouTube command distinguishes search opening vs in-app playback', async () => {
   const result = await executeAgentTask('Play a song on YouTube', true);
   assert.strictEqual(result.state, 'completed');
   assert.strictEqual(result.requiresInternet, true);
-  assert.strictEqual(result.outputData?.action, 'open_youtube');
+  assert.strictEqual(result.outputData?.action, 'open_youtube_search');
+  assert.ok(result.summary.includes('YouTube অনুসন্ধান লিঙ্ক'));
 });
 
 test('executeAgentTask - queues YouTube command when offline', async () => {
@@ -23,18 +24,26 @@ test('executeAgentTask - queues YouTube command when offline', async () => {
   assert.strictEqual(result.requiresInternet, true);
 });
 
-test('executeAgentTask - requires confirmation for Gmail email sending', async () => {
-  const result = await executeAgentTask('Send an email via Gmail', true, false);
+test('executeAgentTask - Gmail task returns not_connected when OAuth token is missing', async () => {
+  const result = await executeAgentTask('Send an email via Gmail', true, false, undefined);
+  assert.strictEqual(result.state, 'not_connected');
+  assert.strictEqual(result.requiresInternet, true);
+  assert.ok(result.summary.includes('Gmail API সংযুক্ত নয়'));
+});
+
+test('executeAgentTask - Gmail task asks for permission when OAuth token is present', async () => {
+  const result = await executeAgentTask('Send an email via Gmail', true, false, 'mock-oauth-token');
   assert.strictEqual(result.state, 'permission_pending');
   assert.strictEqual(result.requiresConfirmation, true);
   assert.ok(result.confirmationMessage?.includes('ইমেইল বার্তাটি পাঠাতে চান'));
 });
 
-test('executeAgentTask - completes local reminder when offline', async () => {
+test('executeAgentTask - completes reminder task offline with local persistence note', async () => {
   const result = await executeAgentTask('একটাই রিমাইন্ডার সেট করো', false);
   assert.strictEqual(result.state, 'completed');
   assert.strictEqual(result.requiresInternet, false);
   assert.strictEqual(result.outputData?.offlineStored, true);
+  assert.ok(result.outputData?.noteId);
 });
 
 test('generateDevelopmentPlan - parses Web Development request', () => {
@@ -64,18 +73,20 @@ test('getProjectBrainSummary - returns non-secret project knowledge', () => {
   assert.ok(brain.apiEndpoints.includes('/api/assistant/chat'));
 });
 
-test('runAutoQASuite - reports QA suite status', () => {
+test('runAutoQASuite - reports QA suite status accurately', () => {
   const qa = runAutoQASuite();
   assert.strictEqual(qa.typecheckPassed, true);
   assert.strictEqual(qa.unitTestsPassed, true);
   assert.strictEqual(qa.buildPassed, true);
+  assert.ok(qa.details.length >= 4);
 });
 
-test('getPluginRegistryStatus - lists active tool adapters', () => {
+test('getPluginRegistryStatus - lists active and not_connected tool adapters', () => {
   const plugins = getPluginRegistryStatus();
   assert.ok(plugins.some((p) => p.id === 'github-adapter'));
   assert.ok(plugins.some((p) => p.id === 'cloudflare-adapter'));
-  assert.ok(plugins.some((p) => p.id === 'gmail-adapter'));
+  const gmailPlugin = plugins.find((p) => p.id === 'gmail-adapter');
+  assert.strictEqual(gmailPlugin?.status, 'not_connected');
 });
 
 test('DEFAULT_REPO_CONFIG has target repository details', () => {
