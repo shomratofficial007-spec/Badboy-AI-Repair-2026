@@ -59,32 +59,28 @@ function extractDeltas(event: string): { texts: string[]; done: boolean } {
   return { texts, done };
 }
 
-export const onRequestOptions: PagesFunction<Env> = async () => {
-  return new Response(null, {
-    status: 204,
-    headers: CORS_HEADERS,
-  });
-};
-
-export const onRequestGet: PagesFunction<Env> = async (context) => {
-  const url = new URL(context.request.url);
+export async function handleApiRequest(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
   const pathname = url.pathname.replace(/\/+$/, "");
-  if (pathname === "/api/healthz" || pathname === "/api/health") {
-    return jsonResponse({ status: "ok" });
+
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
-  return jsonResponse({ error: "Endpoint not found." }, 404);
-};
 
-export const onRequestPost: PagesFunction<Env> = async (context) => {
-  const url = new URL(context.request.url);
-  const pathname = url.pathname.replace(/\/+$/, "");
-  if (pathname !== "/api/assistant/chat") {
+  if (request.method === "GET") {
+    if (pathname === "/api/healthz" || pathname === "/api/health") {
+      return jsonResponse({ status: "ok" });
+    }
+    return jsonResponse({ error: "Endpoint not found." }, 404);
+  }
+
+  if (request.method !== "POST" || pathname !== "/api/assistant/chat") {
     return jsonResponse({ error: "Endpoint not found." }, 404);
   }
 
   let body: unknown;
   try {
-    body = await context.request.json();
+    body = await request.json();
   } catch {
     return jsonResponse({ error: "Invalid assistant message body." }, 400);
   }
@@ -105,7 +101,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     return jsonResponse({ error: "Invalid assistant message payload." }, 400);
   }
 
-  const apiKey = context.env.OPENROUTER_API_KEY || "";
+  const apiKey = env.OPENROUTER_API_KEY || "";
   if (!apiKey) {
     console.error("[CF Function Error] OPENROUTER_API_KEY is missing from environment bindings.");
     return jsonResponse(
@@ -245,4 +241,30 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       ...CORS_HEADERS,
     },
   });
+}
+
+export const onRequestOptions: PagesFunction<Env> = async (context) => {
+  return handleApiRequest(context.request, context.env);
+};
+
+export const onRequestGet: PagesFunction<Env> = async (context) => {
+  return handleApiRequest(context.request, context.env);
+};
+
+export const onRequestPost: PagesFunction<Env> = async (context) => {
+  return handleApiRequest(context.request, context.env);
+};
+
+export default {
+  async fetch(request: Request, env: Env, ctx: { waitUntil: (promise: Promise<unknown>) => void }): Promise<Response> {
+    const url = new URL(request.url);
+    if (url.pathname.startsWith("/api/")) {
+      return handleApiRequest(request, env);
+    }
+    const assets = (env as { ASSETS?: { fetch: (req: Request) => Promise<Response> } }).ASSETS;
+    if (assets) {
+      return assets.fetch(request);
+    }
+    return new Response("Not Found", { status: 404 });
+  },
 };
