@@ -5,9 +5,37 @@ import {
   getProjectBrainSummary,
   runAutoQASuite,
   getPluginRegistryStatus,
+  executeAgentTask,
   DEFAULT_REPO_CONFIG,
   createGitHubPullRequest,
 } from './developer.ts';
+
+test('executeAgentTask - executes YouTube command when online', async () => {
+  const result = await executeAgentTask('Play a song on YouTube', true);
+  assert.strictEqual(result.state, 'completed');
+  assert.strictEqual(result.requiresInternet, true);
+  assert.strictEqual(result.outputData?.action, 'open_youtube');
+});
+
+test('executeAgentTask - queues YouTube command when offline', async () => {
+  const result = await executeAgentTask('Play a song on YouTube', false);
+  assert.strictEqual(result.state, 'offline_queued');
+  assert.strictEqual(result.requiresInternet, true);
+});
+
+test('executeAgentTask - requires confirmation for Gmail email sending', async () => {
+  const result = await executeAgentTask('Send an email via Gmail', true, false);
+  assert.strictEqual(result.state, 'permission_pending');
+  assert.strictEqual(result.requiresConfirmation, true);
+  assert.ok(result.confirmationMessage?.includes('ইমেইল বার্তাটি পাঠাতে চান'));
+});
+
+test('executeAgentTask - completes local reminder when offline', async () => {
+  const result = await executeAgentTask('একটাই রিমাইন্ডার সেট করো', false);
+  assert.strictEqual(result.state, 'completed');
+  assert.strictEqual(result.requiresInternet, false);
+  assert.strictEqual(result.outputData?.offlineStored, true);
+});
 
 test('generateDevelopmentPlan - parses Web Development request', () => {
   const plan = generateDevelopmentPlan('Build a website for my Telegram channel.');
@@ -47,7 +75,7 @@ test('getPluginRegistryStatus - lists active tool adapters', () => {
   const plugins = getPluginRegistryStatus();
   assert.ok(plugins.some((p) => p.id === 'github-adapter'));
   assert.ok(plugins.some((p) => p.id === 'cloudflare-adapter'));
-  assert.ok(plugins.some((p) => p.id === 'openrouter-adapter'));
+  assert.ok(plugins.some((p) => p.id === 'gmail-adapter'));
 });
 
 test('DEFAULT_REPO_CONFIG has target repository details', () => {

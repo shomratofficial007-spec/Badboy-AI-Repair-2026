@@ -24,6 +24,7 @@ import {
   sendTelegramMessage,
 } from '@/lib/assistant/telegram';
 import {
+  AgentExecutionResult,
   DevPlan,
   ModuleCategory,
   PRResult,
@@ -31,6 +32,7 @@ import {
   ProjectBrain,
   QAResult,
   createGitHubPullRequest,
+  executeAgentTask,
   generateDevelopmentPlan,
   getGitHubToken,
   getPluginRegistryStatus,
@@ -60,6 +62,11 @@ export default function SettingsScreen() {
   const [telegramItems, setTelegramItems] = useState<LocalTelegramMessage[]>([]);
   const [telegramBusy, setTelegramBusy] = useState(false);
   const [telegramError, setTelegramError] = useState<string | null>(null);
+
+  // Agent Execution System States
+  const [agentPrompt, setAgentPrompt] = useState('');
+  const [agentResult, setAgentResult] = useState<AgentExecutionResult | null>(null);
+  const [agentBusy, setAgentBusy] = useState(false);
 
   // Developer Control Center States
   const [activeDevTab, setActiveDevTab] = useState<ModuleCategory>('self');
@@ -100,6 +107,24 @@ export default function SettingsScreen() {
 
     return () => { active = false; };
   }, []);
+
+  const handleRunAgentTask = async (overridePrompt?: string, userConfirmed: boolean = false) => {
+    const prompt = (overridePrompt || agentPrompt).trim();
+    if (!prompt || agentBusy) return;
+    setAgentBusy(true);
+    try {
+      const res = await executeAgentTask(prompt, settings.onlineAI, userConfirmed);
+      setAgentResult(res);
+      if (res.state === 'completed' && res.outputData?.action === 'open_youtube') {
+        const query = encodeURIComponent(String(res.outputData.query || prompt));
+        Linking.openURL(`https://www.youtube.com/results?search_query=${query}`).catch(() => {});
+      }
+    } catch {
+      // Ignore err
+    } finally {
+      setAgentBusy(false);
+    }
+  };
 
   const handleSaveGithubToken = async () => {
     const val = githubTokenDraft.trim();
@@ -270,6 +295,66 @@ export default function SettingsScreen() {
       <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
         কী শেয়ার হবে, কোন ফিচার চালু থাকবে—সবকিছু এখানে ঠিক করুন।
       </Text>
+
+      {/* Central Agent Task Execution Engine */}
+      <View style={[styles.section, sectionCard]}>
+        <View style={styles.sectionTitleRow}>
+          <Feather name="cpu" size={17} color={colors.primary} />
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>BADBOY Agent Task Engine</Text>
+        </View>
+        <Text style={[styles.body, { color: colors.mutedForeground }]}>
+          ভয়েস বা টেক্সট কম্যান্ড দিলে এজেন্ট নিজে উপযুক্ত টুল সিলেক্ট করে ও টাস্ক সম্পাদন করে।
+        </Text>
+        <TextInput
+          value={agentPrompt}
+          onChangeText={setAgentPrompt}
+          placeholder="যেমন: Play a song on YouTube / Send an email via Gmail"
+          placeholderTextColor={colors.mutedForeground}
+          style={[styles.telegramInput, { color: colors.foreground, borderColor: colors.input, marginTop: 8 }]}
+        />
+        <Pressable
+          onPress={() => void handleRunAgentTask()}
+          disabled={!agentPrompt.trim() || agentBusy}
+          style={[styles.primaryButton, { backgroundColor: colors.primary, opacity: !agentPrompt.trim() || agentBusy ? 0.5 : 1 }]}
+        >
+          {agentBusy ? <ActivityIndicator size="small" color={colors.primaryForeground} /> : <Feather name="play-circle" size={15} color={colors.primaryForeground} />}
+          <Text style={{ color: colors.primaryForeground, fontWeight: '700' }}>টাস্ক রান করুন</Text>
+        </Pressable>
+
+        {agentResult ? (
+          <View style={[styles.planCard, { borderColor: colors.border, backgroundColor: colors.background, marginTop: 10 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: colors.foreground }}>টাস্ক স্ট্যাটাস: {agentResult.state.toUpperCase()}</Text>
+              <View style={[styles.categoryPill, { backgroundColor: agentResult.state === 'completed' ? colors.primary : colors.secondary }]}>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: colors.primaryForeground }}>
+                  {agentResult.requiresInternet ? 'ONLINE REQUIRED' : 'OFFLINE OK'}
+                </Text>
+              </View>
+            </View>
+            <Text style={[styles.body, { color: colors.foreground, marginTop: 4 }]}>{agentResult.summary}</Text>
+
+            {agentResult.state === 'permission_pending' && agentResult.confirmationMessage ? (
+              <View style={{ marginTop: 8, gap: 6 }}>
+                <Text style={{ color: colors.destructive, fontSize: 12, fontWeight: '600' }}>{agentResult.confirmationMessage}</Text>
+                <Pressable
+                  onPress={() => void handleRunAgentTask(agentResult.prompt, true)}
+                  style={[styles.primaryButton, { backgroundColor: colors.primary }]}
+                >
+                  <Text style={{ color: colors.primaryForeground, fontWeight: '700' }}>অনুমতি দিন ও সম্পাদন করুন</Text>
+                </Pressable>
+              </View>
+            ) : null}
+
+            {agentResult.logs.length > 0 ? (
+              <View style={[styles.logBox, { backgroundColor: colors.card, borderColor: colors.border, marginTop: 8 }]}>
+                {agentResult.logs.map((l, i) => (
+                  <Text key={i} style={[styles.logText, { color: colors.mutedForeground }]}>{l}</Text>
+                ))}
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
 
       <View style={[styles.section, sectionCard]}>
         <View style={styles.sectionTitleRow}>
