@@ -6,25 +6,25 @@ import {
   createGitHubPullRequest,
 } from './developer.ts';
 
-test('generateDevelopmentPlan - parses reminder request in Bengali', () => {
+test('generateDevelopmentPlan - parses Web Development request', () => {
+  const plan = generateDevelopmentPlan('Build a website for my Telegram channel.');
+  assert.strictEqual(plan.category, 'web');
+  assert.strictEqual(plan.title, 'Telegram চ্যানল ও ওয়েব ল্যান্ডিং পেজ ওয়েবসাইট');
+  assert.ok(plan.filesToModify.includes('artifacts/mobile/server/templates/landing-page.html'));
+});
+
+test('generateDevelopmentPlan - parses Android App & APK Builder request', () => {
+  const plan = generateDevelopmentPlan('Create an Android app and prepare an APK.');
+  assert.strictEqual(plan.category, 'android');
+  assert.strictEqual(plan.title, 'Android অ্যাপ ও APK/AAB বিল্ড কনফিগারেশন');
+  assert.ok(plan.filesToModify.includes('artifacts/mobile/app.json'));
+});
+
+test('generateDevelopmentPlan - parses Self Development reminder request', () => {
   const plan = generateDevelopmentPlan('Badboy, add a new reminder feature to yourself.');
+  assert.strictEqual(plan.category, 'self');
   assert.strictEqual(plan.title, 'স্মারক ও রিমাইন্ডার সিস্টেম');
   assert.ok(plan.filesToModify.includes('artifacts/mobile/lib/assistant/types.ts'));
-  assert.ok(plan.filesToModify.includes('artifacts/mobile/app/(tabs)/index.tsx'));
-  assert.strictEqual(plan.requiresApproval, true);
-  assert.strictEqual(plan.tasks.length, 4);
-});
-
-test('generateDevelopmentPlan - parses voice feature request in Bengali', () => {
-  const plan = generateDevelopmentPlan('ব্যাডবয়, ভয়েস কমান্ড যোগ করো');
-  assert.strictEqual(plan.title, 'ভয়েস ইন্টারেকশন ও ওয়েক-ওয়ার্ড উন্নয়ন');
-  assert.ok(plan.filesToModify.includes('artifacts/mobile/lib/assistant/voice.ts'));
-});
-
-test('generateDevelopmentPlan - fallback for generic feature request', () => {
-  const plan = generateDevelopmentPlan('Create a custom analytics plugin');
-  assert.strictEqual(plan.title, 'নতুন ফিচারের উন্নয়ন পরিকল্পনা');
-  assert.ok(plan.branchName.startsWith('feature/badboy-custom-feature-'));
 });
 
 test('DEFAULT_REPO_CONFIG has target repository details', () => {

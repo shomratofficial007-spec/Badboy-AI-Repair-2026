@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const GITHUB_TOKEN_KEY = 'oi-assistant-github-token-v1';
 
+export type ModuleCategory = 'web' | 'android' | 'self' | 'general';
+
 export interface DevTask {
   id: string;
   title: string;
@@ -12,6 +14,7 @@ export interface DevTask {
 export interface DevPlan {
   id: string;
   prompt: string;
+  category: ModuleCategory;
   title: string;
   featureDescription: string;
   branchName: string;
@@ -80,19 +83,63 @@ export async function removeGitHubToken(): Promise<void> {
 }
 
 /**
- * Normalizes user prompt in Bengali or English to generate a structured development plan.
+ * Normalizes user prompt in Bengali or English to generate a structured development plan across modules.
  */
 export function generateDevelopmentPlan(prompt: string): DevPlan {
   const clean = prompt.trim();
   const lower = clean.toLowerCase();
 
+  let category: ModuleCategory = 'self';
   let featureKey = 'custom-feature';
   let title = 'নতুন ফিচারের উন্নয়ন পরিকল্পনা';
   let featureDescription = 'ব্যবহারকারীর প্রদত্ত নির্দেশনা অনুসারে ফিচারের পরিকল্পনা প্রস্তুত করা হয়েছে।';
   let filesToModify: string[] = ['artifacts/mobile/app/(tabs)/index.tsx'];
   let dependencies: string[] = [];
 
-  if (lower.includes('reminder') || clean.includes('রিমাইন্ডার') || clean.includes('মনে রাখা') || clean.includes('স্মারক')) {
+  // Web Development Detection
+  if (
+    lower.includes('website') ||
+    lower.includes('telegram channel') ||
+    clean.includes('ওয়েবসাইট') ||
+    clean.includes('টেলিগ্রাম চ্যানেল') ||
+    clean.includes('ল্যান্ডিং পেজ')
+  ) {
+    category = 'web';
+    featureKey = 'web-landing';
+    title = 'Telegram চ্যানল ও ওয়েব ল্যান্ডিং পেজ ওয়েবসাইট';
+    featureDescription = 'Telegram চ্যানল প্রচার, সোশ্যাল কার্ড এবং AI ভয়েস ফিচারের জন্য রেসপন্সিভ ওয়েব ল্যান্ডিং পেজ সৃষ্টি।';
+    filesToModify = [
+      'artifacts/mobile/server/templates/landing-page.html',
+      'functions/api/[[path]].ts',
+      'artifacts/mobile/app.json',
+    ];
+  }
+  // Android App & APK Builder Detection
+  else if (
+    lower.includes('android') ||
+    lower.includes('apk') ||
+    lower.includes('aab') ||
+    clean.includes('অ্যান্ড্রয়েড') ||
+    clean.includes('এপিকে')
+  ) {
+    category = 'android';
+    featureKey = 'android-apk-builder';
+    title = 'Android অ্যাপ ও APK/AAB বিল্ড কনফিগারেশন';
+    featureDescription = 'Expo/EAS প্রফাইল যাচাই, Android Manifest পারমিশন সেটআপ এবং APK ফাইল প্রস্তুতির নির্দেশাবলী।';
+    filesToModify = [
+      'artifacts/mobile/app.json',
+      'artifacts/mobile/package.json',
+      'PORTABLE-DEPLOYMENT.md',
+    ];
+  }
+  // Self Development: Reminders
+  else if (
+    lower.includes('reminder') ||
+    clean.includes('রিমাইন্ডার') ||
+    clean.includes('মনে রাখা') ||
+    clean.includes('স্মারক')
+  ) {
+    category = 'self';
     featureKey = 'reminder-feature';
     title = 'স্মারক ও রিমাইন্ডার সিস্টেম';
     featureDescription = 'ব্যবহারকারীর ভয়েস ও চ্যাট থেকে সরাসরি রিমাইন্ডার তৈরি, সংরক্ষণ এবং তালিকা দেখার সুবিধা।';
@@ -102,7 +149,10 @@ export function generateDevelopmentPlan(prompt: string): DevPlan {
       'artifacts/mobile/app/(tabs)/index.tsx',
       'artifacts/mobile/app/(tabs)/memory.tsx',
     ];
-  } else if (lower.includes('telegram') || clean.includes('টেলিগ্রাম')) {
+  }
+  // Self Development: Telegram
+  else if (lower.includes('telegram') || clean.includes('টেলিগ্রাম')) {
+    category = 'self';
     featureKey = 'telegram-enhancement';
     title = 'Telegram Bot ইন্টিগ্রেশন আপডেট';
     featureDescription = 'Telegram Bot এর মেসেজ রিড, সেন্ড এবং নিরাপত্তা ফিচার এনহ্যান্সমেন্ট।';
@@ -110,7 +160,10 @@ export function generateDevelopmentPlan(prompt: string): DevPlan {
       'artifacts/mobile/lib/assistant/telegram.ts',
       'artifacts/mobile/app/(tabs)/settings.tsx',
     ];
-  } else if (lower.includes('voice') || clean.includes('ভয়েস') || clean.includes('কণ্ঠ')) {
+  }
+  // Self Development: Voice
+  else if (lower.includes('voice') || clean.includes('ভয়েস') || clean.includes('কণ্ঠ')) {
+    category = 'self';
     featureKey = 'voice-enhancement';
     title = 'ভয়েস ইন্টারেকশন ও ওয়েক-ওয়ার্ড উন্নয়ন';
     featureDescription = 'ভয়েস টাইপিং, রিড-অ্যালাউড এবং কাস্টম ওয়েক-ওয়ার্ড সনাক্তকরণ এনহ্যান্সমেন্ট।';
@@ -118,7 +171,10 @@ export function generateDevelopmentPlan(prompt: string): DevPlan {
       'artifacts/mobile/lib/assistant/voice.ts',
       'artifacts/mobile/app/(tabs)/index.tsx',
     ];
-  } else if (lower.includes('ui') || clean.includes('ইউআই') || clean.includes('ডিজাইন') || clean.includes('থিম')) {
+  }
+  // UI & Design
+  else if (lower.includes('ui') || clean.includes('ইউআই') || clean.includes('ডিজাইন') || clean.includes('থিম')) {
+    category = 'self';
     featureKey = 'ui-theme-update';
     title = 'UI ও থিম কাস্টমাইজেশন';
     featureDescription = 'অ্যাপের দৃশ্যমান এলিমেন্ট এবং কালার স্কিম আপডেট।';
@@ -140,6 +196,7 @@ export function generateDevelopmentPlan(prompt: string): DevPlan {
   return {
     id: `plan-${Date.now()}`,
     prompt: clean,
+    category,
     title,
     featureDescription,
     branchName,
@@ -294,7 +351,6 @@ export async function createGitHubPullRequest(params: {
       for (const path of plan.filesToModify) {
         log(`ফাইল পূর্বরূপ ও কন্টেন্ট সংগ্রহ করা হচ্ছে: ${path}...`);
         let currentContent = '';
-        let fileSha: string | undefined;
 
         const getFileRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${baseBranch}`, { headers });
         if (getFileRes.ok) {
@@ -302,7 +358,6 @@ export async function createGitHubPullRequest(params: {
           if (fileData.content) {
             currentContent = decodeBase64ToContent(fileData.content);
           }
-          fileSha = fileData.sha;
         }
 
         const newContent = buildUpdatedFileContent(currentContent, plan, path);
@@ -341,11 +396,12 @@ export async function createGitHubPullRequest(params: {
       log(`কমিট সম্পন্ন: ${change.path}`);
     }
 
-    // 4. Create Pull Request with accurate, verified summary
+    // 4. Create Pull Request with accurate summary
     log(`GitHub Pull Request তৈরি করা হচ্ছে...`);
     const prTitle = `feat(badboy): ${plan.title}`;
     const prBody = [
-      `## Badboy Autonomous Feature Request`,
+      `## Badboy Autonomous Development Workspace`,
+      `**ক্যাটাগরি:** ${plan.category.toUpperCase()}`,
       `**উপযোগিতা / প্ল্যান:** ${plan.title}`,
       `**নির্দেশনা:** ${plan.prompt}`,
       ``,
@@ -353,8 +409,8 @@ export async function createGitHubPullRequest(params: {
       ...finalChanges.map((c) => `- \`${c.path}\``),
       ``,
       `### সুরক্ষামূলক বিবরণ:`,
-      `- বিদ্যমান সোর্স কোড অক্ষুণ্ন রেখে ফিচার লজিক সংমিশ্রণ করা হয়েছে।`,
-      `- নিরাপত্তা নির্দেশাবলী: এই Pull Request-টি ম্যানুয়াল রিভিউ ও মার্জের জন্য উন্মুক্ত করা হলো।`,
+      `- বিদ্যমান সোর্স কোড অক্ষুণ্ন রেখে নতুন ফিচার লজিক প্রস্তুত করা হয়েছে।`,
+      `- নিরাপত্তা নির্দেশাবলী: এই Pull Request-টি ম্যানুয়াল রিভিউ ও মার্জের জন্য প্রস্তুত।`,
     ].join('\n');
 
     const prRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
