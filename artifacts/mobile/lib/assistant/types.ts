@@ -5,6 +5,8 @@ export interface ChatMessage {
   role: MessageRole;
   content: string;
   createdAt: string;
+  ytUrl?: string;
+  ytAppUrl?: string;
 }
 
 export interface MemoryNote {

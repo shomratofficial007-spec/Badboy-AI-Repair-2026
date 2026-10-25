@@ -70,12 +70,16 @@ export async function checkMicrophonePermission(): Promise<'granted' | 'denied' 
   }
 }
 
-/** Detect "Oi" / "ওহে" / "JARVIS" wake phrase in transcript string */
+/** Detect "Oi" / "ওহে" / "Badboy" / "JARVIS" wake phrase in transcript string */
 export function containsWakePhrase(text: string): boolean {
   const normalized = text.toLowerCase().trim();
   const patterns = [
     /\boi\b/i,
     /\bওহে\b/i,
+    /\boi\s+badboy\b/i,
+    /\bhey\s+badboy\b/i,
+    /\bbadboy\b/i,
+    /\bব্যাডবয়\b/i,
     /\boi\s+jarvis\b/i,
     /\bhey\s+jarvis\b/i,
     /\bহাই\s+জারভিস\b/i,

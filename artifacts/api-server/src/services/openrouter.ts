@@ -31,7 +31,7 @@ export async function streamOpenRouterReply(
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "X-Title": "JARVIS AI",
+      "X-Title": "Badboy AI",
     },
     body: JSON.stringify({
       model: OPENROUTER_MODEL_ID,

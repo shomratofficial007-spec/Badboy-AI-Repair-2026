@@ -16,6 +16,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { BadboyLogo } from '@/components/BadboyLogo';
 import {
   cleanSongQuery,
   extractYouTubeIntent,
@@ -315,11 +316,11 @@ export default function ChatScreen() {
   };
 
   const getStatusText = () => {
-    if (listening) return wakeDetected ? 'Oi সনাক্ত হয়েছে!' : 'শুনছি… ("Oi" বলুন)';
-    if (busy) return 'JARVIS ভাবছে…';
+    if (listening) return wakeDetected ? 'Oi Badboy সনাক্ত হয়েছে!' : 'শুনছি… ("Oi Badboy" বলুন)';
+    if (busy) return 'Badboy ভাবছে…';
     if (speaking) return 'কথা বলছি…';
     if (!settings.onlineAI) return 'অফলাইন মোড';
-    return 'JARVIS প্রস্তুত';
+    return 'Badboy প্রস্তুত';
   };
 
   const getStatusColor = () => {
@@ -362,7 +363,7 @@ export default function ChatScreen() {
           ]}
         >
           <Text style={{ color: isUser ? colors.primaryForeground : colors.foreground, fontSize: 15, lineHeight: 22 }}>
-            {item.content || (busy && item.role === 'assistant' ? 'JARVIS ভাবছে…' : '')}
+            {item.content || (busy && item.role === 'assistant' ? 'Badboy ভাবছে…' : '')}
           </Text>
           {ytIntent ? (
             <Pressable
@@ -389,7 +390,7 @@ export default function ChatScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 4 : 0}
     >
-      {/* JARVIS Futuristic Top Bar */}
+      {/* Badboy Futuristic Top Bar */}
       <View
         style={[
           styles.header,
@@ -402,12 +403,12 @@ export default function ChatScreen() {
         ]}
       >
         <View style={styles.brand}>
-          <Animated.View style={[styles.logo, { backgroundColor: colors.primary, transform: [{ scale: corePulse }] }]}>
-            <Feather name="cpu" size={20} color={colors.primaryForeground} />
+          <Animated.View style={[{ transform: [{ scale: corePulse }] }]}>
+            <BadboyLogo size={38} />
           </Animated.View>
           <View>
             <View style={styles.titleRow}>
-              <Text style={[styles.brandTitle, { color: colors.foreground }]}>JARVIS AI</Text>
+              <Text style={[styles.brandTitle, { color: colors.foreground }]}>Badboy AI</Text>
               <View style={[styles.statusBadge, { backgroundColor: getStatusColor() }]}>
                 <Text style={styles.statusBadgeText}>{getStatusText()}</Text>
               </View>
@@ -451,11 +452,11 @@ export default function ChatScreen() {
       {!messages.length ? (
         <View style={styles.welcome}>
           <View style={[styles.welcomeMark, { backgroundColor: colors.secondary, borderColor: colors.primary }]}>
-            <Feather name="radio" size={32} color={colors.primary} />
+            <BadboyLogo size={48} />
           </View>
-          <Text style={[styles.welcomeTitle, { color: colors.foreground }]}>স্বাগতম! আমি JARVIS</Text>
+          <Text style={[styles.welcomeTitle, { color: colors.foreground }]}>স্বাগতম! আমি Badboy</Text>
           <Text style={[styles.welcomeText, { color: colors.mutedForeground }]}>
-            কথা বলতে "Oi" বলুন অথবা নিচের অপশন বেছে নিন। যেকোনো অনুসন্ধানে বাংলা ভাষায় তাৎক্ষণিক উত্তর প্রস্তুত।
+            কথা বলতে "Oi Badboy" বলুন অথবা নিচের অপশন বেছে নিন। যেকোনো অনুসন্ধানে বাংলা ভাষায় তাৎক্ষণিক উত্তর প্রস্তুত।
           </Text>
           <View style={styles.suggestions}>
             {['আজকের দিনটি কীভাবে সাজাব?', 'আমাকে একটি দরকারি পরামর্শ দাও'].map((item) => (
@@ -516,7 +517,7 @@ export default function ChatScreen() {
         <TextInput
           value={draft}
           onChangeText={setDraft}
-          placeholder="JARVIS-কে কিছু বলুন…"
+          placeholder="Badboy-কে কিছু বলুন…"
           placeholderTextColor={colors.mutedForeground}
           multiline
           maxLength={4000}
@@ -560,7 +561,6 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   header: { paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  logo: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   brandTitle: { fontSize: 16, fontWeight: '700', letterSpacing: 0.5 },
   brandSub: { fontSize: 11, marginTop: 2 },
@@ -572,7 +572,7 @@ const styles = StyleSheet.create({
   visualizerBar: { width: 3, borderRadius: 2 },
   iconButton: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   welcome: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingBottom: 16 },
-  welcomeMark: { width: 64, height: 64, borderRadius: 20, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 18 },
+  welcomeMark: { width: 68, height: 68, borderRadius: 20, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 18 },
   welcomeTitle: { fontSize: 22, fontWeight: '700', textAlign: 'center', letterSpacing: 0.3 },
   welcomeText: { fontSize: 14, lineHeight: 22, textAlign: 'center', marginTop: 8, maxWidth: 360 },
   suggestions: { width: '100%', gap: 8, marginTop: 24 },
