@@ -27,10 +27,16 @@ import {
   DevPlan,
   ModuleCategory,
   PRResult,
+  PluginItem,
+  ProjectBrain,
+  QAResult,
   createGitHubPullRequest,
   generateDevelopmentPlan,
   getGitHubToken,
+  getPluginRegistryStatus,
+  getProjectBrainSummary,
   removeGitHubToken,
+  runAutoQASuite,
   saveGitHubToken,
 } from '@/lib/assistant/developer';
 
@@ -67,6 +73,11 @@ export default function SettingsScreen() {
   const [devError, setDevError] = useState<string | null>(null);
   const [devHistory, setDevHistory] = useState<Array<{ plan: DevPlan; prUrl?: string; date: string }>>([]);
 
+  // Brain & QA Inspection
+  const [projectBrain, setProjectBrain] = useState<ProjectBrain | null>(null);
+  const [qaResult, setQaResult] = useState<QAResult | null>(null);
+  const [plugins, setPlugins] = useState<PluginItem[]>([]);
+
   useEffect(() => {
     let active = true;
     hasTelegramBot().then((connected) => {
@@ -82,6 +93,10 @@ export default function SettingsScreen() {
     }).catch(() => {
       // Ignore fallback
     });
+
+    setProjectBrain(getProjectBrainSummary());
+    setQaResult(runAutoQASuite());
+    setPlugins(getPluginRegistryStatus());
 
     return () => { active = false; };
   }, []);
@@ -309,12 +324,12 @@ export default function SettingsScreen() {
       <View style={[styles.section, sectionCard]}>
         <View style={styles.sectionTitleRow}>
           <Feather name="code" size={17} color={colors.primary} />
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Develop Control Center</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>BADBOY Developer Platform</Text>
         </View>
         <SettingSwitch
           colors={colors}
           title="Develop mode"
-          subtitle="ওয়েব ডেভেলপমেন্ট, অ্যান্ড্রয়েড এপিকে ও ব্যাডবয় সেলফ-ডেভেলপমেন্ট ওয়ার্কস্পেস।"
+          subtitle="ওয়েব ডেভেলপমেন্ট, অ্যান্ড্রয়েড এপিকে, অটো কিউএ এবং ব্যাডবয় সেলফ-ডেভেলপমেন্ট।"
           value={settings.developerMode}
           onValueChange={(value) => updateSettings({ developerMode: value })}
         />
@@ -322,17 +337,20 @@ export default function SettingsScreen() {
         {settings.developerMode ? (
           <View style={{ marginTop: 12, gap: 10 }}>
             {/* Navigation Modules Tabs */}
-            <View style={styles.tabBar}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 4 }}>
               {[
                 { id: 'self', label: 'Self Dev', icon: 'cpu' },
                 { id: 'web', label: 'Web Dev', icon: 'globe' },
                 { id: 'android', label: 'Android APK', icon: 'smartphone' },
+                { id: 'qa', label: 'Auto QA', icon: 'check-square' },
+                { id: 'brain', label: 'Project Brain', icon: 'database' },
+                { id: 'plugins', label: 'Plugins', icon: 'grid' },
               ].map((tab) => (
                 <Pressable
                   key={tab.id}
                   onPress={() => setActiveDevTab(tab.id as ModuleCategory)}
                   style={[
-                    styles.tabButton,
+                    styles.tabButtonHorizontal,
                     {
                       backgroundColor: activeDevTab === tab.id ? colors.primary : colors.secondary,
                     },
@@ -355,7 +373,7 @@ export default function SettingsScreen() {
                   </Text>
                 </Pressable>
               ))}
-            </View>
+            </ScrollView>
 
             {/* Prompt Input Box */}
             <Text style={[styles.label, { color: colors.foreground, marginTop: 4 }]}>
@@ -363,12 +381,14 @@ export default function SettingsScreen() {
                 ? 'ওয়েব নির্দেশিকা (যেমন: Build a website for my Telegram channel)'
                 : activeDevTab === 'android'
                 ? 'অ্যান্ড্রয়েড নির্দেশিকা (যেমন: Create an Android app and prepare an APK)'
+                : activeDevTab === 'qa'
+                ? 'QA নির্দেশিকা (যেমন: Inspect this project, find bugs, and fix them)'
                 : 'সেলফ নির্দেশিকা (যেমন: Badboy, add a new reminder feature to yourself)'}
             </Text>
             <TextInput
               value={featureRequestInput}
               onChangeText={setFeatureRequestInput}
-              placeholder="বাংলা বা ইংরেজিতে আপনার নির্দেশনা লিখুন…"
+              placeholder="বাংলা বা ইংরেজিতে আপনার নির্দেশ দিন…"
               placeholderTextColor={colors.mutedForeground}
               multiline
               style={[styles.telegramInput, { color: colors.foreground, borderColor: colors.input, minHeight: 60 }]}
@@ -420,6 +440,57 @@ export default function SettingsScreen() {
                   {devBusy ? <ActivityIndicator size="small" color={colors.primaryForeground} /> : <Feather name="git-pull-request" size={15} color={colors.primaryForeground} />}
                   <Text style={{ color: colors.primaryForeground, fontWeight: '700' }}>GitHub-এ PR তৈরি করুন</Text>
                 </Pressable>
+              </View>
+            ) : null}
+
+            {/* Project Brain View */}
+            {activeDevTab === 'brain' && projectBrain ? (
+              <View style={[styles.infoCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Feather name="database" size={16} color={colors.primary} />
+                  <Text style={[styles.label, { color: colors.foreground }]}>Project Brain (Knowledge Base)</Text>
+                </View>
+                <Text style={[styles.body, { color: colors.foreground, fontWeight: '600', marginTop: 6 }]}>{projectBrain.name}</Text>
+                <Text style={[styles.body, { color: colors.mutedForeground, marginTop: 4 }]}>{projectBrain.architecture}</Text>
+                <Text style={[styles.label, { color: colors.foreground, marginTop: 8 }]}>ফ্রেমওয়ার্ক ও টেকনোলজি:</Text>
+                {projectBrain.frameworks.map((fw) => (
+                  <Text key={fw} style={[styles.smallNote, { color: colors.mutedForeground }]}>• {fw}</Text>
+                ))}
+              </View>
+            ) : null}
+
+            {/* Auto QA View */}
+            {activeDevTab === 'qa' && qaResult ? (
+              <View style={[styles.infoCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Feather name="check-square" size={16} color={colors.primary} />
+                  <Text style={[styles.label, { color: colors.foreground }]}>Auto QA & ভ্যালিডেশন সুইট</Text>
+                </View>
+                {qaResult.details.map((d, idx) => (
+                  <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                    <Feather name="check-circle" size={13} color={colors.primary} />
+                    <Text style={[styles.body, { color: colors.foreground, fontSize: 12 }]}>{d}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            {/* Plugin Marketplace Status View */}
+            {activeDevTab === 'plugins' ? (
+              <View style={[styles.infoCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Feather name="grid" size={16} color={colors.primary} />
+                  <Text style={[styles.label, { color: colors.foreground }]}>Plugin Marketplace & Tool Registry</Text>
+                </View>
+                {plugins.map((p) => (
+                  <View key={p.id} style={{ borderBottomWidth: 1, borderColor: colors.border, paddingVertical: 6 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={[styles.body, { color: colors.foreground, fontWeight: '700' }]}>{p.name}</Text>
+                      <Text style={{ fontSize: 10, color: colors.primary, fontWeight: '700' }}>{p.status.toUpperCase()}</Text>
+                    </View>
+                    <Text style={[styles.smallNote, { color: colors.mutedForeground }]}>{p.description}</Text>
+                  </View>
+                ))}
               </View>
             ) : null}
 
@@ -716,8 +787,7 @@ const styles = StyleSheet.create({
   messageSender: { fontSize: 13, fontWeight: '700', marginBottom: 4 },
   errorText: { fontSize: 12, lineHeight: 18, marginTop: 9 },
   dangerButton: { borderWidth: 1, borderRadius: 14, minHeight: 46, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 },
-  tabBar: { flexDirection: 'row', gap: 6, marginBottom: 8 },
-  tabButton: { flex: 1, minHeight: 36, borderRadius: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  tabButtonHorizontal: { paddingHorizontal: 12, height: 34, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 6 },
   tabText: { fontSize: 12, fontWeight: '700' },
   categoryPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   planCard: { borderWidth: 1, borderRadius: 14, padding: 12, marginTop: 10 },

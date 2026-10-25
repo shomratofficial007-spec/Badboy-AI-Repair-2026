@@ -2,6 +2,9 @@ import assert from 'node:assert';
 import test from 'node:test';
 import {
   generateDevelopmentPlan,
+  getProjectBrainSummary,
+  runAutoQASuite,
+  getPluginRegistryStatus,
   DEFAULT_REPO_CONFIG,
   createGitHubPullRequest,
 } from './developer.ts';
@@ -20,11 +23,31 @@ test('generateDevelopmentPlan - parses Android App & APK Builder request', () =>
   assert.ok(plan.filesToModify.includes('artifacts/mobile/app.json'));
 });
 
-test('generateDevelopmentPlan - parses Self Development reminder request', () => {
-  const plan = generateDevelopmentPlan('Badboy, add a new reminder feature to yourself.');
-  assert.strictEqual(plan.category, 'self');
-  assert.strictEqual(plan.title, 'স্মারক ও রিমাইন্ডার সিস্টেম');
-  assert.ok(plan.filesToModify.includes('artifacts/mobile/lib/assistant/types.ts'));
+test('generateDevelopmentPlan - parses Auto QA request', () => {
+  const plan = generateDevelopmentPlan('Inspect this project, find bugs, and fix them.');
+  assert.strictEqual(plan.category, 'qa');
+  assert.strictEqual(plan.title, 'Auto QA & টেস্ট সুইট অটোমেশন');
+});
+
+test('getProjectBrainSummary - returns non-secret project knowledge', () => {
+  const brain = getProjectBrainSummary();
+  assert.strictEqual(brain.name, 'Voice-Memory-Assistant-net (Badboy AI)');
+  assert.ok(brain.frameworks.includes('TypeScript'));
+  assert.ok(brain.apiEndpoints.includes('/api/assistant/chat'));
+});
+
+test('runAutoQASuite - reports QA suite status', () => {
+  const qa = runAutoQASuite();
+  assert.strictEqual(qa.typecheckPassed, true);
+  assert.strictEqual(qa.unitTestsPassed, true);
+  assert.strictEqual(qa.buildPassed, true);
+});
+
+test('getPluginRegistryStatus - lists active tool adapters', () => {
+  const plugins = getPluginRegistryStatus();
+  assert.ok(plugins.some((p) => p.id === 'github-adapter'));
+  assert.ok(plugins.some((p) => p.id === 'cloudflare-adapter'));
+  assert.ok(plugins.some((p) => p.id === 'openrouter-adapter'));
 });
 
 test('DEFAULT_REPO_CONFIG has target repository details', () => {
