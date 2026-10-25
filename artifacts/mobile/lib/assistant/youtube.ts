@@ -23,8 +23,14 @@ export function cleanSongQuery(raw: string): string {
   if (!raw) return 'Bangla songs';
   let cleaned = raw.trim();
 
-  // Strip trailing "play koro", "play", "shunao", etc.
-  cleaned = cleaned.replace(/\s+(?:play\s*koro|play\s*kro|play\s*করুন|চালান|বাজাও|প্লে\s*করুন|প্লে|play|shunao)$/i, '').trim();
+  // Strip leading/trailing filler phrases, commas, and Banglish command clauses
+  cleaned = cleaned
+    .replace(/^[,.\s]+|[,.\s]+$/g, '')
+    .replace(/(?:,\s*)?(?:surch|search)\s*er\s*(?:1st|first|\d+st|\d+nd|\d+rd|\d+th)?\s*(?:gan\s*ta|song\s*ta|gan|song)?\s*(?:play\s*koro|play\s*kro|play|চালান|বাজাও)?/gi, '')
+    .replace(/\s*(?:play\s*koro|play\s*kro|play\s*করুন|চালান|বাজাও|প্লে\s*করুন|প্লে|play|shunao)\s*$/gi, '')
+    .replace(/\s*(?:gan\s*ta|gan|song)\s*$/gi, '')
+    .replace(/^[,.\s]+|[,.\s]+$/g, '')
+    .trim();
 
   return cleaned.length > 0 ? cleaned : raw.trim();
 }
