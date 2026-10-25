@@ -15,11 +15,11 @@ test('isGeneralMusicRequest - identifies general music requests in Bangla and Ba
   assert.strictEqual(isGeneralMusicRequest('আজকের আবহাওয়া কেমন'), false);
 });
 
-test('cleanSongQuery - strips Banglish filler phrases', () => {
+test('cleanSongQuery - strips Banglish filler phrases and isolates song name', () => {
   assert.strictEqual(cleanSongQuery('boro boro remix'), 'boro boro remix');
   assert.strictEqual(
-    cleanSongQuery('surch er 1st gan ta play koro'),
-    'surch er 1st gan ta',
+    cleanSongQuery('boro boro remix, surch er 1st gan ta play koro'),
+    'boro boro remix',
   );
   assert.strictEqual(cleanSongQuery('Rabindra Sangeet play koro'), 'Rabindra Sangeet');
 });
