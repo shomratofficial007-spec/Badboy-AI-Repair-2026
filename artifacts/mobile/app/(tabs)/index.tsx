@@ -16,7 +16,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { extractYouTubeIntent } from '@/lib/assistant/youtube';
+import {
+  extractYouTubeIntent,
+  getYouTubeUrl,
+  isGeneralMusicRequest,
+} from '@/lib/assistant/youtube';
 import { useAssistant } from '@/context/AssistantContext';
 import { streamReply } from '@/lib/assistant/api';
 import {
@@ -52,6 +56,7 @@ export default function ChatScreen() {
   const [wakeDetected, setWakeDetected] = useState(false);
   const [selectedLang, setSelectedLang] = useState<'bn-BD' | 'en-US'>('bn-BD');
   const [error, setError] = useState<string | null>(null);
+  const [awaitingSongName, setAwaitingSongName] = useState(false);
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const stopDictationRef = useRef<(() => void) | null>(null);
 
@@ -112,6 +117,58 @@ export default function ChatScreen() {
     setMessages(working);
     setBusy(true);
 
+    if (awaitingSongName) {
+      setAwaitingSongName(false);
+      const url = getYouTubeUrl(text);
+      answer = {
+        ...answer,
+        content: `"${text}" গানটি ইউটিউবে অনুসন্ধান করে চালানো হচ্ছে...`,
+      };
+      setMessages([...messages, userMessage, answer]);
+      setBusy(false);
+      if (Platform.OS === 'web' && isReadAloudAvailable()) {
+        speak(`"${text}" গানটি ইউটিউবে প্লে করা হচ্ছে`, selectedLang);
+      }
+      setTimeout(() => {
+        Linking.openURL(url).catch(() => {
+          setError('YouTube লিঙ্কটি খোলা যায়নি।');
+        });
+      }, 800);
+      return;
+    }
+
+    if (isGeneralMusicRequest(text)) {
+      setAwaitingSongName(true);
+      answer = {
+        ...answer,
+        content: 'কোন গান শুনতে চাও?',
+      };
+      setMessages([...messages, userMessage, answer]);
+      setBusy(false);
+      if (Platform.OS === 'web' && isReadAloudAvailable()) {
+        speak('কোন গান শুনতে চাও?', selectedLang);
+      }
+      if (Platform.OS === 'web' && isDictationAvailable() && settings.voiceProcessingConsent) {
+        setTimeout(() => {
+          setListening(true);
+          stopDictationRef.current = dictateOnce({
+            lang: selectedLang,
+            onTranscript: (songName) => {
+              setDraft(songName.slice(0, 4000));
+            },
+            onError: (errType) => {
+              setError(getVoiceErrorMessage(errType));
+            },
+            onDone: () => {
+              setListening(false);
+              stopDictationRef.current = null;
+            },
+          });
+        }, 1200);
+      }
+      return;
+    }
+
     if (!settings.onlineAI) {
       working = working.filter((message) => message.id !== answer.id);
       setMessages(working);
@@ -139,7 +196,7 @@ export default function ChatScreen() {
     } finally {
       setBusy(false);
     }
-  }, [busy, messages, setMessages, settings]);
+  }, [awaitingSongName, busy, messages, selectedLang, setMessages, settings]);
 
   const requestImprovement = useCallback(async () => {
     const lastUserMessage = [...messages].reverse().find((item) => item.role === 'user');
