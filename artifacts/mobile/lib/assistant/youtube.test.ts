@@ -1,6 +1,26 @@
 import assert from 'node:assert';
 import test from 'node:test';
-import { extractYouTubeIntent } from './youtube.ts';
+import {
+  extractYouTubeIntent,
+  getYouTubeUrl,
+  isGeneralMusicRequest,
+} from './youtube.ts';
+
+test('isGeneralMusicRequest - identifies general music requests in Bangla and English', () => {
+  assert.strictEqual(isGeneralMusicRequest('গান শোনাও'), true);
+  assert.strictEqual(isGeneralMusicRequest('গান বাজাও'), true);
+  assert.strictEqual(isGeneralMusicRequest('play a song'), true);
+  assert.strictEqual(isGeneralMusicRequest('play music'), true);
+  assert.strictEqual(isGeneralMusicRequest('আজকের খবর কি'), false);
+});
+
+test('getYouTubeUrl - formats YouTube search URLs correctly', () => {
+  const url = getYouTubeUrl('Boro Boro Remix');
+  assert.strictEqual(
+    url,
+    'https://www.youtube.com/results?search_query=Boro%20Boro%20Remix',
+  );
+});
 
 test('extractYouTubeIntent - detects English song request', () => {
   const intent = extractYouTubeIntent('play Rabindra Sangeet on youtube');
