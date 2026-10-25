@@ -6,6 +6,9 @@
     "directory": "./artifacts/mobile/dist",
     "binding": "ASSETS"
   },
+  "build": {
+    "command": "pnpm run build"
+  },
   "compatibility_date": "2025-02-16",
   "compatibility_flags": ["nodejs_compat"]
 }
