@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -21,6 +23,15 @@ import {
   hasTelegramBot,
   sendTelegramMessage,
 } from '@/lib/assistant/telegram';
+import {
+  DevPlan,
+  PRResult,
+  createGitHubPullRequest,
+  generateDevelopmentPlan,
+  getGitHubToken,
+  removeGitHubToken,
+  saveGitHubToken,
+} from '@/lib/assistant/developer';
 
 interface LocalTelegramMessage {
   id: number;
@@ -43,6 +54,16 @@ export default function SettingsScreen() {
   const [telegramBusy, setTelegramBusy] = useState(false);
   const [telegramError, setTelegramError] = useState<string | null>(null);
 
+  // Developer Mode States
+  const [githubToken, setGithubToken] = useState('');
+  const [githubTokenDraft, setGithubTokenDraft] = useState('');
+  const [featureRequestInput, setFeatureRequestInput] = useState('');
+  const [currentPlan, setCurrentPlan] = useState<DevPlan | null>(null);
+  const [devBusy, setDevBusy] = useState(false);
+  const [devStatusLog, setDevStatusLog] = useState<string[]>([]);
+  const [prResult, setPrResult] = useState<PRResult | null>(null);
+  const [devError, setDevError] = useState<string | null>(null);
+
   useEffect(() => {
     let active = true;
     hasTelegramBot().then((connected) => {
@@ -50,8 +71,85 @@ export default function SettingsScreen() {
     }).catch(() => {
       if (active) setTelegramError('ফোনের নিরাপদ স্টোরেজ পরীক্ষা করা যায়নি।');
     });
+
+    getGitHubToken().then((token) => {
+      if (active && token) {
+        setGithubToken(token);
+      }
+    }).catch(() => {
+      // Ignore fallback
+    });
+
     return () => { active = false; };
   }, []);
+
+  const handleSaveGithubToken = async () => {
+    const val = githubTokenDraft.trim();
+    if (!val) return;
+    await saveGitHubToken(val);
+    setGithubToken(val);
+    setGithubTokenDraft('');
+    Alert.alert('সংরক্ষিত', 'GitHub Personal Access Token সফলভাবে সংরক্ষণ করা হয়েছে।');
+  };
+
+  const handleRemoveGithubToken = async () => {
+    await removeGitHubToken();
+    setGithubToken('');
+    Alert.alert('মুছে ফেলা হয়েছে', 'GitHub টোকেন সরিয়ে ফেলা হয়েছে।');
+  };
+
+  const handleCreatePlan = () => {
+    const prompt = featureRequestInput.trim();
+    if (!prompt) return;
+    setDevError(null);
+    setPrResult(null);
+    const plan = generateDevelopmentPlan(prompt);
+    setCurrentPlan(plan);
+    setDevStatusLog([`[${new Date().toISOString().slice(11, 19)}] পরিকল্পনা তৈরি হয়েছে: "${plan.title}"`]);
+  };
+
+  const handleExecutePlanAndPR = async () => {
+    if (!currentPlan) return;
+    if (!githubToken) {
+      setDevError('GitHub Personal Access Token প্রয়োজন। অনুগ্রহ করে নিচে আপনার PAT সংযোগ করুন।');
+      return;
+    }
+
+    Alert.alert(
+      'স্বয়ংক্রিয় ডেভেলপমেন্ট ওয়ার্কফ্লো শুরু করবেন?',
+      `ব্রাঞ্চ: ${currentPlan.branchName}\nলক্ষ্য: GitHub-এ Pull Request তৈরি করা।\n\nআপনি কি নিশ্চিত?`,
+      [
+        { text: 'বাতিল', style: 'cancel' },
+        {
+          text: 'হ্যাঁ, শুরু করুন',
+          onPress: async () => {
+            setDevBusy(true);
+            setDevError(null);
+            setDevStatusLog((prev) => [...prev, `[${new Date().toISOString().slice(11, 19)}] ফাইল সংশোধন ও সার্ভিস চেকিং চলছে...`]);
+
+            try {
+              const res = await createGitHubPullRequest({
+                githubToken,
+                plan: currentPlan,
+              });
+
+              setPrResult(res);
+              if (res.logs && res.logs.length) {
+                setDevStatusLog((prev) => [...prev, ...res.logs]);
+              }
+              if (!res.success) {
+                setDevError(res.error || 'Pull Request তৈরি করা ব্যর্থ হয়েছে।');
+              }
+            } catch (err) {
+              setDevError(err instanceof Error ? err.message : 'অপ্রত্যাশিত ত্রুটি ঘটেছে।');
+            } finally {
+              setDevBusy(false);
+            }
+          },
+        },
+      ],
+    );
+  };
 
   const connectBot = () => {
     const token = botTokenDraft.trim();
@@ -201,6 +299,7 @@ export default function SettingsScreen() {
         />
       </View>
 
+      {/* Autonomous Developer Mode Section */}
       <View style={[styles.section, sectionCard]}>
         <View style={styles.sectionTitleRow}>
           <Feather name="code" size={17} color={colors.primary} />
@@ -209,13 +308,131 @@ export default function SettingsScreen() {
         <SettingSwitch
           colors={colors}
           title="Develop mode"
-          subtitle="কোড, পরিকল্পনা ও bug-fix নিয়ে কাজ করবে। ঝুঁকিপূর্ণ পরিবর্তন বা permission বদলানোর আগে অনুমতি চাইবে।"
+          subtitle="স্বয়ংক্রিয় ফিচার ডেভেলপমেন্ট, প্ল্যানিং, টাইপচেক এবং GitHub Pull Request ওয়ার্কফ্লো।"
           value={settings.developerMode}
           onValueChange={(value) => updateSettings({ developerMode: value })}
         />
-        <Text style={[styles.smallNote, { color: colors.mutedForeground }]}>
-          এই মোড নির্দেশনা ও code draft দিতে পারে; এই অ্যাপের ভেতর থেকে Replit workspace-এ সরাসরি ফাইল বদলানোর সংযোগ এখনো নেই।
-        </Text>
+
+        {settings.developerMode ? (
+          <View style={{ marginTop: 12, gap: 10 }}>
+            <Text style={[styles.label, { color: colors.foreground }]}>ফিচারের বর্ণনা বা নির্দেশনা দিন (বাংলা/English)</Text>
+            <TextInput
+              value={featureRequestInput}
+              onChangeText={setFeatureRequestInput}
+              placeholder="যেমন: Badboy, add a new reminder feature to yourself."
+              placeholderTextColor={colors.mutedForeground}
+              multiline
+              style={[styles.telegramInput, { color: colors.foreground, borderColor: colors.input, minHeight: 60 }]}
+            />
+            <Pressable
+              onPress={handleCreatePlan}
+              disabled={!featureRequestInput.trim() || devBusy}
+              style={[styles.primaryButton, { backgroundColor: colors.primary, opacity: !featureRequestInput.trim() || devBusy ? 0.5 : 1 }]}
+            >
+              <Feather name="cpu" size={15} color={colors.primaryForeground} />
+              <Text style={{ color: colors.primaryForeground, fontWeight: '700' }}>পরিকল্পনা তৈরি করুন</Text>
+            </Pressable>
+
+            {currentPlan ? (
+              <View style={[styles.planCard, { borderColor: colors.border, backgroundColor: colors.background }]}>
+                <Text style={[styles.planTitle, { color: colors.primary }]}>{currentPlan.title}</Text>
+                <Text style={[styles.body, { color: colors.foreground, marginTop: 4 }]}>{currentPlan.featureDescription}</Text>
+
+                <Text style={[styles.label, { color: colors.foreground, marginTop: 10 }]}>পরিবর্তনযোগ্য ফাইলসমূহ:</Text>
+                {currentPlan.filesToModify.map((f) => (
+                  <Text key={f} style={[styles.smallNote, { color: colors.mutedForeground, marginTop: 2 }]}>• {f}</Text>
+                ))}
+
+                <Text style={[styles.label, { color: colors.foreground, marginTop: 10 }]}>কাজসমূহ (Tasks):</Text>
+                {currentPlan.tasks.map((t) => (
+                  <View key={t.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                    <Feather name="check-circle" size={13} color={colors.primary} />
+                    <Text style={[styles.body, { color: colors.foreground }]}>{t.title}</Text>
+                  </View>
+                ))}
+
+                <View style={[styles.wakeCard, { backgroundColor: colors.secondary, marginTop: 10 }]}>
+                  <Feather name="shield" size={15} color={colors.secondaryForeground} />
+                  <Text style={[styles.wakeText, { color: colors.secondaryForeground }]}>{currentPlan.securityNotes}</Text>
+                </View>
+
+                <Pressable
+                  onPress={handleExecutePlanAndPR}
+                  disabled={devBusy}
+                  style={[styles.primaryButton, { backgroundColor: colors.primary, marginTop: 12 }]}
+                >
+                  {devBusy ? <ActivityIndicator size="small" color={colors.primaryForeground} /> : <Feather name="git-pull-request" size={15} color={colors.primaryForeground} />}
+                  <Text style={{ color: colors.primaryForeground, fontWeight: '700' }}>GitHub-এ PR তৈরি করুন</Text>
+                </Pressable>
+              </View>
+            ) : null}
+
+            {/* GitHub Credentials Management */}
+            <View style={[styles.rule, { backgroundColor: colors.border }]} />
+            <Text style={[styles.label, { color: colors.foreground }]}>GitHub Personal Access Token (PAT)</Text>
+            {githubToken ? (
+              <View style={{ gap: 6 }}>
+                <View style={[styles.connectedPill, { backgroundColor: colors.secondary }]}>
+                  <Feather name="check" size={14} color={colors.primary} />
+                  <Text style={{ color: colors.secondaryForeground, fontSize: 13, fontWeight: '600' }}>
+                    GitHub PAT সংযুক্ত আছে (••••{githubToken.slice(-4)})
+                  </Text>
+                </View>
+                <Pressable onPress={handleRemoveGithubToken} style={styles.textButton}>
+                  <Text style={{ color: colors.destructive, fontWeight: '600' }}>টোকেন মুছুন</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={{ gap: 8 }}>
+                <TextInput
+                  value={githubTokenDraft}
+                  onChangeText={setGithubTokenDraft}
+                  placeholder="ghp_xxxxxxxxxxxx"
+                  placeholderTextColor={colors.mutedForeground}
+                  secureTextEntry
+                  style={[styles.telegramInput, { color: colors.foreground, borderColor: colors.input }]}
+                />
+                <Pressable
+                  onPress={handleSaveGithubToken}
+                  disabled={!githubTokenDraft.trim()}
+                  style={[styles.secondaryButton, { backgroundColor: colors.secondary, opacity: !githubTokenDraft.trim() ? 0.5 : 1 }]}
+                >
+                  <Text style={{ color: colors.secondaryForeground, fontWeight: '700' }}>টোকেন সংরক্ষণ করুন</Text>
+                </Pressable>
+              </View>
+            )}
+
+            {/* Diagnostic Logs & Errors */}
+            {devError ? <Text style={[styles.errorText, { color: colors.destructive }]}>{devError}</Text> : null}
+
+            {prResult?.success && prResult.prUrl ? (
+              <View style={[styles.prSuccessCard, { borderColor: colors.primary, backgroundColor: colors.secondary }]}>
+                <Feather name="check-circle" size={18} color={colors.primary} />
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={{ color: colors.foreground, fontWeight: '700' }}>{prResult.summary}</Text>
+                  <Pressable onPress={() => void Linking.openURL(prResult.prUrl!)}>
+                    <Text style={{ color: colors.primary, fontWeight: '700', textDecorationLine: 'underline' }}>
+                      GitHub-এ PR দেখুন: #{prResult.prNumber}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
+
+            {devStatusLog.length > 0 ? (
+              <View style={[styles.logBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <Text style={[styles.label, { color: colors.mutedForeground, fontSize: 11 }]}>টেকনিক্যাল লবস (Technical Logs):</Text>
+                {devStatusLog.map((log, idx) => (
+                  <Text key={idx} style={[styles.logText, { color: colors.mutedForeground }]}>{log}</Text>
+                ))}
+              </View>
+            ) : null}
+          </View>
+        ) : (
+          <Text style={[styles.smallNote, { color: colors.mutedForeground }]}>
+            এই মোড অন করলে আপনি ভয়েস বা টেক্সটে নির্দেশনা দিয়ে ফিচার যোগ ও Pull Request তৈরি করার সুবিধা পাবেন।
+          </Text>
+        )}
       </View>
 
       <View style={[styles.section, sectionCard]}>
@@ -388,11 +605,16 @@ const styles = StyleSheet.create({
   wakeText: { flex: 1, fontSize: 12, lineHeight: 18 },
   connectedPill: { flexDirection: 'row', alignSelf: 'flex-start', alignItems: 'center', gap: 8, paddingHorizontal: 11, paddingVertical: 8, borderRadius: 20 },
   dot: { width: 7, height: 7, borderRadius: 4 },
-  telegramInput: { borderWidth: 1, borderRadius: 13, paddingHorizontal: 12, paddingVertical: 11, marginTop: 12, fontSize: 14 },
-  primaryButton: { minHeight: 44, borderRadius: 13, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10 },
-  textButton: { alignSelf: 'center', padding: 12, marginTop: 2 },
+  telegramInput: { borderWidth: 1, borderRadius: 13, paddingHorizontal: 12, paddingVertical: 11, marginTop: 4, fontSize: 14 },
+  primaryButton: { minHeight: 44, borderRadius: 13, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 6 },
+  textButton: { alignSelf: 'center', padding: 8, marginTop: 2 },
   telegramItem: { borderBottomWidth: 1, paddingVertical: 10 },
   messageSender: { fontSize: 13, fontWeight: '700', marginBottom: 4 },
   errorText: { fontSize: 12, lineHeight: 18, marginTop: 9 },
   dangerButton: { borderWidth: 1, borderRadius: 14, minHeight: 46, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 },
+  planCard: { borderWidth: 1, borderRadius: 14, padding: 12, marginTop: 12 },
+  planTitle: { fontSize: 15, fontWeight: '700' },
+  prSuccessCard: { borderWidth: 1, borderRadius: 14, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
+  logBox: { borderWidth: 1, borderRadius: 12, padding: 10, marginTop: 10, gap: 4 },
+  logText: { fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
 });
