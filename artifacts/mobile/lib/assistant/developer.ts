@@ -291,8 +291,9 @@ export async function executeAgentTask(
       // Attempt dynamic storage save if available
       try {
         const storageModule = await import('./storage').catch(() => null);
-        if (storageModule && typeof storageModule.storeMemoryNote === 'function') {
-          await storageModule.storeMemoryNote(newNote, []).catch(() => null);
+        if (storageModule && typeof storageModule.readLocalState === 'function' && typeof storageModule.storeMemoryNote === 'function') {
+          const currentState = await storageModule.readLocalState().catch(() => ({ memories: [] }));
+          await storageModule.storeMemoryNote(newNote, currentState.memories || []).catch(() => null);
         }
       } catch {
         // Fallback
