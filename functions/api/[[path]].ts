@@ -248,3 +248,33 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     },
   });
 };
+
+export default {
+  async fetch(
+    request: Request,
+    env: Env,
+    executionContext?: { waitUntil: (promise: Promise<unknown>) => void }
+  ): Promise<Response> {
+    const context = {
+      request,
+      env,
+      params: {},
+      waitUntil: executionContext?.waitUntil
+        ? executionContext.waitUntil.bind(executionContext)
+        : () => {},
+      next: async () => jsonResponse({ error: "Endpoint not found." }, 404),
+      data: {},
+    };
+
+    if (request.method === "OPTIONS") {
+      return onRequestOptions(context as any);
+    }
+    if (request.method === "GET") {
+      return onRequestGet(context as any);
+    }
+    if (request.method === "POST") {
+      return onRequestPost(context as any);
+    }
+    return jsonResponse({ error: "Method not allowed." }, 405);
+  },
+};
