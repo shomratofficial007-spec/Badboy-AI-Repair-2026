@@ -10,5 +10,6 @@
     "command": "corepack enable && pnpm run build"
   },
   "compatibility_date": "2025-02-16",
-  "compatibility_flags": ["nodejs_compat"]
+  "compatibility_flags": ["nodejs_compat"],
+  "previews": {}
 }

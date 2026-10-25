@@ -8,6 +8,7 @@ import {
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -15,6 +16,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { extractYouTubeIntent } from '@/lib/assistant/youtube';
 import { useAssistant } from '@/context/AssistantContext';
 import { streamReply } from '@/lib/assistant/api';
 import {
@@ -271,8 +273,16 @@ export default function ChatScreen() {
     return '#38bdf8';
   };
 
+  const handleOpenYouTube = (url: string) => {
+    Linking.openURL(url).catch(() => {
+      setError('YouTube লিঙ্কটি খোলা যায়নি।');
+    });
+  };
+
   const renderMessage = ({ item }: { item: ChatMessage }) => {
     const isUser = item.role === 'user';
+    const ytIntent = !isUser ? extractYouTubeIntent(item.content) : null;
+
     return (
       <View style={[styles.messageRow, isUser && styles.userRow]}>
         <View
@@ -288,6 +298,20 @@ export default function ChatScreen() {
           <Text style={{ color: isUser ? colors.primaryForeground : colors.foreground, fontSize: 15, lineHeight: 22 }}>
             {item.content || (busy && item.role === 'assistant' ? 'JARVIS ভাবছে…' : '')}
           </Text>
+          {ytIntent ? (
+            <Pressable
+              onPress={() => handleOpenYouTube(ytIntent.url)}
+              style={({ pressed }) => [
+                styles.ytButton,
+                { backgroundColor: colors.destructive, opacity: pressed ? 0.8 : 1 },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={`YouTube-এ ${ytIntent.query} অনুসন্ধান করুন`}
+            >
+              <Feather name="youtube" size={16} color="#ffffff" />
+              <Text style={styles.ytButtonText}>YouTube-এ "{ytIntent.query}" অনুসন্ধান করুন</Text>
+            </Pressable>
+          ) : null}
         </View>
       </View>
     );
@@ -492,6 +516,20 @@ const styles = StyleSheet.create({
   userRow: { alignItems: 'flex-end' },
   messageBubble: { maxWidth: '85%', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 16, borderWidth: 1 },
   userBubble: { borderBottomRightRadius: 4 },
+  ytButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  ytButtonText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
   improveButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, padding: 8, marginTop: 4 },
   errorBox: { marginHorizontal: 12, marginBottom: 8, borderRadius: 10, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
   composer: { marginHorizontal: 12, borderWidth: 1, borderRadius: 20, minHeight: 52, maxHeight: 130, paddingHorizontal: 8, paddingVertical: 6, flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
