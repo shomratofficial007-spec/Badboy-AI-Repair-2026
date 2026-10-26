@@ -129,7 +129,7 @@ export default function ChatScreen() {
       };
       setMessages([...messages, userMessage, answer]);
       setBusy(false);
-      if (Platform.OS === 'web' && isReadAloudAvailable()) {
+      if (isReadAloudAvailable()) {
         speak(`"${cleanTitle}" গানটি ইউটিউবে প্লে করা হচ্ছে`, selectedLang);
       }
       setTimeout(() => {
@@ -146,10 +146,10 @@ export default function ChatScreen() {
       };
       setMessages([...messages, userMessage, answer]);
       setBusy(false);
-      if (Platform.OS === 'web' && isReadAloudAvailable()) {
+      if (isReadAloudAvailable()) {
         speak('কোন গান শুনতে চাও?', selectedLang);
       }
-      if (Platform.OS === 'web' && isDictationAvailable() && settings.voiceProcessingConsent) {
+      if (isDictationAvailable() && settings.voiceProcessingConsent) {
         setTimeout(() => {
           setListening(true);
           stopDictationRef.current = dictateOnce({
@@ -233,8 +233,8 @@ export default function ChatScreen() {
   }, [improving, messages, settings, updateSettings]);
 
   const toggleVoice = useCallback(async () => {
-    if (Platform.OS !== 'web' || !isDictationAvailable()) {
-      setError('এই ব্রাউজারে বা ডিভাইসে ভয়েস রিকগনিশন সমর্থিত নয়।');
+    if (!isDictationAvailable()) {
+      setError('এই ডিভাইসে বা ব্রাউজারে ভয়েস রিকগনিশন সমর্থিত নয়।');
       return;
     }
     if (!settings.voiceProcessingConsent) {
@@ -290,8 +290,8 @@ export default function ChatScreen() {
       setError('পড়ে শোনানোর মতো কোনো বার্তা নেই।');
       return;
     }
-    if (Platform.OS !== 'web' || !isReadAloudAvailable()) {
-      setError('এই ব্রাউজারে ভয়েস আউটপুট সমর্থিত নয়।');
+    if (!isReadAloudAvailable()) {
+      setError('এই ডিভাইসে বা ব্রাউজারে ভয়েস আউটপুট সমর্থিত নয়।');
       return;
     }
     setError(null);
