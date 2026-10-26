@@ -164,6 +164,11 @@ export function getVoiceErrorMessage(errorType?: string): string {
       return 'মাইক্রোফোন ডিভাইসটি পাওয়া যায়নি বা অন্য অ্যাপ ব্যবহার করছে।';
     case 'aborted':
       return 'ভয়েস গ্রহণ ব্যবহারকারী দ্বারা বন্ধ করা হয়েছে।';
+    case 'start_failed':
+    case 'speech_error':
+    case 'recognition-service-not-available':
+    case 'service-not-available':
+      return 'ভয়েস চালু করা যায়নি। Android Settings থেকে Google app ও Speech Services by Google আপডেট/সক্রিয় করুন, Microphone অনুমতি দিন, তারপর অ্যাপটি আবার খুলুন।';
     case 'unsupported':
     case 'not_supported':
       return 'এই ডিভাইসে বা ব্রাউজারে ভয়েস রিকগনিশন সমর্থিত নয়। Google Speech Services বা উপযুক্ত সার্ভিস ইনস্টল আছে কিনা যাচাই করুন।';
