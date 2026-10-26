@@ -21,7 +21,8 @@
     "android": {
       "permissions": [
         "RECORD_AUDIO"
-      ]
+      ],
+      "package": "com.shomratofficial.badboyai"
     },
     "web": {
       "favicon": "./assets/images/icon.png"
