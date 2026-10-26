@@ -1,9 +1,11 @@
 import { fetch as expoFetch } from 'expo/fetch';
 import type { AssistantSettings } from '@/lib/assistant/types';
 
+const DEFAULT_NATIVE_API_DOMAIN =
+  'https://voice-memory-assistant-net.shomratofficial007.workers.dev';
+
 function apiUrl(path: string) {
-  // On web (Cloudflare Pages, Netlify, or local static preview), the API is a same-origin
-  // route under /api/*, so prefer window.location.origin.
+  // Web deployments use their own same-origin API routes.
   if (
     typeof window !== 'undefined' &&
     typeof window.location?.origin === 'string' &&
@@ -11,10 +13,11 @@ function apiUrl(path: string) {
   ) {
     return `${window.location.origin}/api${path}`;
   }
-  // Native builds and custom clients reach a separately deployed domain.
-  // EAS/native APK builds do not have window.location. Use the live Netlify
-  // deployment as a safe default so preview APKs can reach the same-origin API.
-  const domain = process.env.EXPO_PUBLIC_DOMAIN?.trim() || 'badboy007.netlify.app';
+
+  // Native APKs have no window origin. Prefer an explicitly configured domain,
+  // otherwise use the verified Cloudflare Worker deployment instead of Netlify.
+  const domain =
+    process.env.EXPO_PUBLIC_DOMAIN?.trim() || DEFAULT_NATIVE_API_DOMAIN;
   const baseUrl = domain.startsWith('http') ? domain : `https://${domain}`;
   return `${baseUrl.replace(/\/$/, '')}/api${path}`;
 }
