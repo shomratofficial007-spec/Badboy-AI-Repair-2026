@@ -12,9 +12,11 @@ function apiUrl(path: string) {
     return `${window.location.origin}/api${path}`;
   }
   // Native builds and custom clients reach a separately deployed domain.
-  const domain = process.env.EXPO_PUBLIC_DOMAIN;
-  if (!domain) throw new Error('The assistant server is not available in this preview.');
-  return `https://${domain}/api${path}`;
+  // EAS/native APK builds do not have window.location. Use the live Netlify
+  // deployment as a safe default so preview APKs can reach the same-origin API.
+  const domain = process.env.EXPO_PUBLIC_DOMAIN?.trim() || 'badboy007.netlify.app';
+  const baseUrl = domain.startsWith('http') ? domain : `https://${domain}`;
+  return `${baseUrl.replace(/\\/$/, '')}/api${path}`;
 }
 
 export async function streamReply(
