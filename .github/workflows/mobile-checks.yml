@@ -42,3 +42,5 @@ jobs:
         run: pnpm run typecheck:libs
       - name: TypeScript check
         run: pnpm --filter @workspace/mobile run typecheck
+      - name: Production web build
+        run: pnpm --filter @workspace/mobile run build
