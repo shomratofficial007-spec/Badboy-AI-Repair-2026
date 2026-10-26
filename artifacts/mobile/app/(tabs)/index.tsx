@@ -11,6 +11,7 @@ import {
   Linking,
   Platform,
   Pressable,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -300,6 +301,50 @@ export default function ChatScreen() {
     setTimeout(() => setSpeaking(false), 2000);
   }, [messages, speaking]);
 
+  const startNewChat = () => {
+    if (!messages.length) {
+      setDraft('');
+      setError(null);
+      return;
+    }
+    Alert.alert('নতুন চ্যাট শুরু করবেন?', 'বর্তমান কথোপকথনটি ইতিহাস থেকে সরিয়ে নতুন চ্যাট শুরু হবে।', [
+      { text: 'বাতিল', style: 'cancel' },
+      { text: 'নতুন চ্যাট', onPress: () => { setMessages([]); setDraft(''); setError(null); } },
+    ]);
+  };
+
+  const shareConversation = async () => {
+    if (!messages.length) {
+      setError('শেয়ার করার মতো কোনো চ্যাট নেই।');
+      return;
+    }
+    const transcript = messages.map((item) =>
+      `${item.role === 'user' ? 'আপনি' : 'Badboy AI'}: ${item.content}`,
+    ).join('\\n\\n');
+    try {
+      await Share.share({ message: transcript, title: 'Badboy AI চ্যাট' });
+    } catch {
+      setError('চ্যাট শেয়ার করা যায়নি।');
+    }
+  };
+
+  const showChatOptions = () => {
+    Alert.alert('চ্যাট অপশন', 'কী করতে চান?', [
+      { text: 'নতুন চ্যাট', onPress: startNewChat },
+      { text: 'চ্যাট শেয়ার', onPress: () => { void shareConversation(); } },
+      { text: 'চ্যাট মুছুন', style: 'destructive', onPress: clearChat },
+      { text: 'বন্ধ', style: 'cancel' },
+    ]);
+  };
+
+  const shareMessage = async (message: ChatMessage) => {
+    try {
+      await Share.share({ message: message.content, title: 'Badboy AI উত্তর' });
+    } catch {
+      setError('বার্তাটি শেয়ার করা যায়নি।');
+    }
+  };
+
   const clearChat = () => {
     Alert.alert(
       'চ্যাট ইতিহাস মুছবেন?',
@@ -379,6 +424,18 @@ export default function ChatScreen() {
               <Text style={styles.ytButtonText}>YouTube-এ "{ytIntent.query}" প্লে করুন</Text>
             </Pressable>
           ) : null}
+          {!isUser && item.content.trim() ? (
+            <View style={styles.messageActions}>
+              <Pressable onPress={() => { if (isReadAloudAvailable()) speak(item.content, selectedLang); else setError('এই ডিভাইসে পড়ে শোনানো সমর্থিত নয়।'); }} accessibilityRole="button" accessibilityLabel="উত্তর পড়ে শুনুন" style={[styles.messageAction, { borderColor: colors.border }]}>
+                <Feather name="volume-2" size={13} color={colors.mutedForeground} />
+                <Text style={{ color: colors.mutedForeground, fontSize: 11 }}>শুনুন</Text>
+              </Pressable>
+              <Pressable onPress={() => { void shareMessage(item); }} accessibilityRole="button" accessibilityLabel="উত্তর শেয়ার করুন" style={[styles.messageAction, { borderColor: colors.border }]}>
+                <Feather name="share-2" size={13} color={colors.mutedForeground} />
+                <Text style={{ color: colors.mutedForeground, fontSize: 11 }}>শেয়ার</Text>
+              </Pressable>
+            </View>
+          ) : null}
         </View>
       </View>
     );
@@ -418,6 +475,11 @@ export default function ChatScreen() {
             </Text>
           </View>
         </View>
+
+        {/* ChatGPT-style chat options */}
+        <Pressable onPress={showChatOptions} accessibilityRole="button" accessibilityLabel="চ্যাট অপশন খুলুন" style={[styles.iconButton, { backgroundColor: colors.secondary, marginLeft: 6 }]}>
+          <Feather name="more-horizontal" size={19} color={colors.foreground} />
+        </Pressable>
 
         {/* Language Selector Toggle */}
         <Pressable
@@ -596,6 +658,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+  messageActions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 7, marginLeft: 3 },
+  messageAction: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5 },
   improveButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, padding: 8, marginTop: 4 },
   errorBox: { marginHorizontal: 12, marginBottom: 8, borderRadius: 10, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
   composer: { marginHorizontal: 12, borderWidth: 1, borderRadius: 20, minHeight: 52, maxHeight: 130, paddingHorizontal: 8, paddingVertical: 6, flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
