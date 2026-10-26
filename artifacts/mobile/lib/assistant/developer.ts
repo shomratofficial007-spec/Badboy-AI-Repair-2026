@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { readLocalState, storeMemoryNote } from './storage.ts';
+import { readLocalState, storeMemoryNote } from './storage';
 
 const GITHUB_TOKEN_KEY = 'oi-assistant-github-token-v1';
 
