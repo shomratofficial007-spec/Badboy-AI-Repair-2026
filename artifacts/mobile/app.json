@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "JARVIS AI",
+    "name": "Badboy AI",
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -19,7 +19,9 @@
       }
     },
     "android": {
-      "permissions": ["RECORD_AUDIO"]
+      "permissions": [
+        "RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/images/icon.png"
