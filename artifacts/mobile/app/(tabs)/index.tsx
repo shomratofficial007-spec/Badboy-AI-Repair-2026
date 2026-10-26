@@ -337,6 +337,36 @@ export default function ChatScreen() {
     ]);
   };
 
+  const regenerateAnswer = useCallback(async (message: ChatMessage) => {
+    if (busy || !settings.onlineAI) {
+      setError(!settings.onlineAI ? 'আবার উত্তর পেতে অনলাইন AI চালু করুন।' : 'আগের উত্তর শেষ হলে আবার চেষ্টা করুন।');
+      return;
+    }
+    const index = messages.findIndex((item) => item.id === message.id);
+    const previousUser = [...messages.slice(0, index)].reverse().find((item) => item.role === 'user');
+    if (!previousUser) {
+      setError('এই উত্তরের আগের প্রশ্নটি পাওয়া যায়নি।');
+      return;
+    }
+    const replacement = newMessage('assistant');
+    let working = [...messages.slice(0, index), replacement];
+    setMessages(working);
+    setBusy(true);
+    setError(null);
+    try {
+      await streamReply(previousUser.content, settings, (chunk) => {
+        const updated = { ...replacement, content: replacement.content + chunk };
+        working = working.map((item) => item.id === replacement.id ? updated : item);
+        setMessages(working);
+      });
+    } catch (cause) {
+      setMessages(messages);
+      setError(cause instanceof Error ? cause.message : 'নতুন উত্তর পাওয়া যায়নি।');
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, messages, setMessages, settings]);
+
   const shareMessage = async (message: ChatMessage) => {
     try {
       await Share.share({ message: message.content, title: 'Badboy AI উত্তর' });
@@ -407,7 +437,7 @@ export default function ChatScreen() {
             isUser && styles.userBubble,
           ]}
         >
-          <Text style={{ color: isUser ? colors.primaryForeground : colors.foreground, fontSize: 15, lineHeight: 22 }}>
+          <Text selectable style={{ color: isUser ? colors.primaryForeground : colors.foreground, fontSize: 15, lineHeight: 22 }}>
             {item.content || (busy && item.role === 'assistant' ? 'Badboy ভাবছে…' : '')}
           </Text>
           {ytIntent ? (
