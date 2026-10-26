@@ -11,7 +11,7 @@ import {
   buildStructuredReasoning,
   DEFAULT_REPO_CONFIG,
   createGitHubPullRequest,
-} from './developer';
+} from './developer.ts';
 
 test('detectMessageLanguage - identifies Bengali, Banglish, English, and mixed script', () => {
   assert.strictEqual(detectMessageLanguage('আজকের খবর কী?'), 'bn');
