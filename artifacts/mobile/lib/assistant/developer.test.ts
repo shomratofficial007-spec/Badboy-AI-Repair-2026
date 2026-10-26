@@ -11,7 +11,7 @@ import {
   buildStructuredReasoning,
   DEFAULT_REPO_CONFIG,
   createGitHubPullRequest,
-} from './developer.ts';
+} from './developer';
 
 test('detectMessageLanguage - identifies Bengali, Banglish, English, and mixed script', () => {
   assert.strictEqual(detectMessageLanguage('আজকের খবর কী?'), 'bn');
@@ -72,6 +72,29 @@ test('performLiveWebResearch - deterministic mock test for empty search results 
   }
 });
 
+test('performLiveWebResearch - deterministic mock test for malformed HTML and invalid URLs', async () => {
+  const originalFetch = globalThis.fetch;
+  const mockHtml = `
+    <html><body>
+      <a class="result__url" href="javascript:alert(1)">Invalid JS Link</a>
+      <a class="result__snippet">Bad JS URL link</a>
+      <a class="result__url" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fvalid-domain.com">Valid Domain</a>
+      <a class="result__snippet">Valid snippet content</a>
+    </body></html>
+  `;
+  globalThis.fetch = async () => new Response(mockHtml, { status: 200 });
+
+  try {
+    const research = await performLiveWebResearch('Malformed HTML test');
+    assert.strictEqual(research.isFallbackLinkOnly, false);
+    assert.strictEqual(research.results.length, 1);
+    assert.strictEqual(research.results[0].title, 'Valid Domain');
+    assert.strictEqual(research.results[0].url, 'https://valid-domain.com/');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('performLiveWebResearch - deterministic mock test for HTTP error failure', async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => new Response('Server Error', { status: 500 });
@@ -95,6 +118,23 @@ test('performLiveWebResearch - deterministic mock test for network rejection', a
     const research = await performLiveWebResearch('Network Failure');
     assert.strictEqual(research.isFallbackLinkOnly, true);
     assert.strictEqual(research.error, 'Network Connection Refused');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('performLiveWebResearch - deterministic mock test for timeout/abort error', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    const err = new Error('The operation was aborted');
+    err.name = 'AbortError';
+    throw err;
+  };
+
+  try {
+    const research = await performLiveWebResearch('Timeout test');
+    assert.strictEqual(research.isFallbackLinkOnly, true);
+    assert.strictEqual(research.error, 'Search request timed out');
   } finally {
     globalThis.fetch = originalFetch;
   }

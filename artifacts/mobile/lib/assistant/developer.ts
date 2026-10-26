@@ -238,6 +238,7 @@ export async function performLiveWebResearch(query: string, timeoutMs: number = 
       results: [],
       sourceSummary: 'অনুসন্ধানের জন্য কোনো বিষয় প্রদান করা হয়নি।',
       isFallbackLinkOnly: true,
+      error: 'Empty search query',
     };
   }
 
@@ -319,7 +320,8 @@ export async function performLiveWebResearch(query: string, timeoutMs: number = 
       isFallbackLinkOnly: false,
     };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const isAbort = err instanceof Error && err.name === 'AbortError';
+    const msg = isAbort ? 'Search request timed out' : (err instanceof Error ? err.message : String(err));
     const fallbackUrl = `https://duckduckgo.com/?q=${encodeURIComponent(cleanQuery)}`;
     return {
       query: cleanQuery,
@@ -433,16 +435,16 @@ export async function executeAgentTask(
       prompt: clean,
       lang: detectedLanguage,
       answerText: searchRes.isFallbackLinkOnly
-        ? `"${clean}" অনুসন্ধানের ফলাফল অনুসন্ধানী লিঙ্কে প্রদান করা হলো।`
-        : `"${clean}" বিষয়টিতে সাম্প্রতিক তথ্যসূত্র সংগ্রহ করা হয়েছে।`,
+        ? `"${clean}" অনুসন্ধানের ফলাফল সরাসরি স্নিপেট পাওয়া যায়নি; বিকল্প অনুসন্ধানী লিঙ্ক প্রদান করা হলো।`
+        : `"${clean}" বিষয়টিতে সাম্প্রতিক তথ্যসূত্র সংগৃহীত হয়েছে।`,
       explanationText: searchRes.isFallbackLinkOnly
-        ? `সরাসরি তথ্য টেক্সট স্ট্রিপিং সীমাবদ্ধতার কারণে অনুসন্ধানী সার্চ লিঙ্ক প্রস্তুত করা হয়েছে।`
-        : `DuckDuckGo অনুসন্ধান সার্ভিস ব্যবহার করে অনলাইন ওয়েব উৎসসমূহ থেকে প্রাসঙ্গিক তথ্যসূত্র সংগ্রহ করা হয়েছে।`,
+        ? `সার্ভার রেসপন্স বা এইচটিএমএল স্ট্রাকচার সীমাবদ্ধতার কারণে সরাসরি তথ্য এক্সট্র্যাক্ট করা সম্ভব হয়নি; নিচে অনুসন্ধানী সার্চ লিঙ্ক দেয়া হয়েছে।`
+        : `DuckDuckGo অনুসন্ধান সার্ভিস ব্যবহার করে অনলাইন ওয়েব উৎসসমূহ থেকে প্রাসঙ্গিক স্নপেট সংগ্রহ করা হয়েছে।`,
       sources: evidenceList,
       limitationsText: searchRes.isFallbackLinkOnly
-        ? 'সরাসরি স্নিপেট পাওয়া যায়নি; সার্চ লিঙ্কের তথ্য ব্যবহারকারীর স্বাধীনভাবে দেখে নেয়া উচিত।'
-        : 'প্রাপ্ত স্নিপেট অনলাইন উৎসের অধীন; স্বাধীন তথ্য সত্যতা আলাদাভাবে সত্য বলে নিশ্চিত করা হয় না।',
-      nextStepText: 'নির্দিষ্ট কোনো লিঙ্ক পরিদর্শন বা সার্চ রিফাইন করার প্রয়োজন থাকলে বলুন।',
+        ? 'সরাসরি তথ্য স্নিপেট পাওয়া যায়নি; প্রাপ্ত সার্চ লিঙ্ক ব্যবহার করে তথ্য যাচাই করুন।'
+        : 'প্রাপ্ত স্নিপেটসমূহ অনলাইন অনুসন্ধানের উপর ভিত্তি করে সংগৃহীত; স্বাধীনভাবে তথ্যের সত্যতা সত্য বলে দাবি করা হয় না।',
+      nextStepText: 'নির্দিষ্ট কোনো লিঙ্ক পরিদর্শন বা নতুন কিওয়ার্ড দিয়ে রিফাইন করার প্রয়োজন থাকলে বলুন।',
     });
 
     return {
