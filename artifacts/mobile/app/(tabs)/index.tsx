@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -50,6 +51,8 @@ function newMessage(role: ChatMessage['role'], content = ''): ChatMessage {
 export default function ChatScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const { messages, setMessages, settings, updateSettings } = useAssistant();
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
@@ -526,6 +529,9 @@ export default function ChatScreen() {
           },
         ]}
       >
+        <Pressable onPress={() => setDrawerOpen(true)} accessibilityRole="button" accessibilityLabel="সাইড মেনু খুলুন" style={[styles.iconButton, { backgroundColor: colors.secondary, marginRight: 8 }]}>
+          <Feather name="menu" size={20} color={colors.foreground} />
+        </Pressable>
         <View style={styles.brand}>
           <Animated.View style={[{ transform: [{ scale: corePulse }] }]}>
             <BadboyLogo size={38} />
@@ -577,6 +583,50 @@ export default function ChatScreen() {
           <Feather name="trash-2" size={17} color={colors.foreground} />
         </Pressable>
       </View>
+
+
+      {drawerOpen ? (
+        <View style={[styles.drawerScrim, { backgroundColor: 'rgba(0,0,0,0.58)' }]}>
+          <Pressable style={styles.drawerOutside} onPress={() => setDrawerOpen(false)} accessibilityLabel="মেনু বন্ধ করুন" />
+          <View style={[styles.drawerPanel, { backgroundColor: colors.card, borderRightColor: colors.border, paddingTop: Math.max(insets.top, 14) + 10, paddingBottom: Math.max(insets.bottom, 12) }]}>
+            <View style={styles.drawerBrand}>
+              <BadboyLogo size={42} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.brandTitle, { color: colors.foreground }]}>Badboy AI</Text>
+                <Text style={[styles.brandSub, { color: colors.mutedForeground }]}>তোমার AI সহকারী</Text>
+              </View>
+              <Pressable onPress={() => setDrawerOpen(false)} style={styles.iconButton} accessibilityLabel="বন্ধ করুন"><Feather name="x" size={19} color={colors.foreground} /></Pressable>
+            </View>
+            <Pressable style={[styles.drawerPrimary, { backgroundColor: colors.primary }]} onPress={() => { setDrawerOpen(false); startNewChat(); }}>
+              <Feather name="plus" size={18} color={colors.primaryForeground} /><Text style={{ color: colors.primaryForeground, fontWeight: '700' }}>নতুন চ্যাট</Text>
+            </Pressable>
+            <Pressable style={styles.drawerItem} onPress={() => { setDrawerOpen(false); Alert.alert('চ্যাট খুঁজুন', 'সব চ্যাটের স্থায়ী সার্চ-ইতিহাস পরের ধাপে যোগ করা হবে।'); }}>
+              <Feather name="search" size={18} color={colors.foreground} /><Text style={[styles.drawerItemText, { color: colors.foreground }]}>চ্যাট খুঁজুন</Text>
+            </Pressable>
+            <Pressable style={styles.drawerItem} onPress={() => { setDrawerOpen(false); Alert.alert('চ্যাট হিস্টোরি', messages.length ? messages.slice(-6).map((m) => (m.role === 'user' ? 'আপনি: ' : 'Badboy: ') + m.content.slice(0, 90)).join('\n\n') : 'এই চ্যাটে এখনো কোনো বার্তা নেই।'); }}>
+              <Feather name="clock" size={18} color={colors.foreground} /><Text style={[styles.drawerItemText, { color: colors.foreground }]}>চ্যাট হিস্টোরি</Text>
+            </Pressable>
+            <Pressable style={styles.drawerItem} onPress={() => { setDrawerOpen(false); showChatOptions(); }}>
+              <Feather name="bookmark" size={18} color={colors.foreground} /><Text style={[styles.drawerItemText, { color: colors.foreground }]}>চ্যাট অপশন</Text>
+            </Pressable>
+            <View style={[styles.drawerDivider, { backgroundColor: colors.border }]} />
+            <Pressable style={styles.drawerItem} onPress={() => { setDrawerOpen(false); router.push('/(tabs)/settings' as never); }}>
+              <Feather name="settings" size={18} color={colors.foreground} /><Text style={[styles.drawerItemText, { color: colors.foreground }]}>সেটিংস</Text><Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+            </Pressable>
+            <Pressable style={styles.drawerItem} onPress={() => { setDrawerOpen(false); chooseAiStyle(); }}>
+              <Feather name="sliders" size={18} color={colors.foreground} /><Text style={[styles.drawerItemText, { color: colors.foreground }]}>AI ব্যক্তিত্ব</Text>
+            </Pressable>
+            <Pressable style={styles.drawerItem} onPress={() => { setDrawerOpen(false); showCreativeOptions(); }}>
+              <Feather name="edit-3" size={18} color={colors.foreground} /><Text style={[styles.drawerItemText, { color: colors.foreground }]}>সৃজনশীল লেখা</Text>
+            </Pressable>
+            <View style={{ flex: 1 }} />
+            <View style={[styles.drawerDivider, { backgroundColor: colors.border }]} />
+            <Pressable style={styles.drawerItem} onPress={() => { setDrawerOpen(false); Alert.alert('Badboy AI', 'ব্যক্তিগত AI সহকারী • Cloudflare'); }}>
+              <Feather name="help-circle" size={18} color={colors.foreground} /><Text style={[styles.drawerItemText, { color: colors.foreground }]}>সাহায্য ও অ্যাপের তথ্য</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
 
       {!messages.length ? (
         <View style={styles.welcome}>
@@ -688,6 +738,14 @@ export default function ChatScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  drawerScrim: { ...StyleSheet.absoluteFillObject, zIndex: 100, flexDirection: 'row' },
+  drawerOutside: { flex: 1 },
+  drawerPanel: { position: 'absolute', left: 0, top: 0, bottom: 0, width: '82%', maxWidth: 340, borderRightWidth: 1, paddingHorizontal: 16, zIndex: 101, elevation: 18 },
+  drawerBrand: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 20 },
+  drawerPrimary: { minHeight: 48, borderRadius: 14, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+  drawerItem: { minHeight: 46, flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 10, borderRadius: 10 },
+  drawerItemText: { flex: 1, fontSize: 14, fontWeight: '500' },
+  drawerDivider: { height: 1, marginVertical: 12 },
   header: { paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
