@@ -300,15 +300,15 @@ export default function SettingsScreen() {
       <View style={[styles.section, sectionCard]}>
         <View style={styles.sectionTitleRow}>
           <Feather name="cpu" size={17} color={colors.primary} />
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>BADBOY Agent Task Engine</Text>
+          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>BADBOY Smart Agent Task Engine</Text>
         </View>
         <Text style={[styles.body, { color: colors.mutedForeground }]}>
-          ভয়েস বা টেক্সট কম্যান্ড দিলে এজেন্ট নিজে উপযুক্ত টুল সিলেক্ট করে ও টাস্ক সম্পাদন করে।
+          ভয়েস বা টেক্সট কম্যান্ড দিলে এজেন্ট নিজে উপযুক্ত টুল ও স্মার্ট রিজনিং সিলেক্ট করে লাইভ ওয়েব তথ্যসহ টাস্ক সম্পাদন করে।
         </Text>
         <TextInput
           value={agentPrompt}
           onChangeText={setAgentPrompt}
-          placeholder="যেমন: Play a song on YouTube / Send an email via Gmail"
+          placeholder="যেমন: Search Cloudflare Pages docs / Play a song on YouTube"
           placeholderTextColor={colors.mutedForeground}
           style={[styles.telegramInput, { color: colors.foreground, borderColor: colors.input, marginTop: 8 }]}
         />
@@ -324,14 +324,16 @@ export default function SettingsScreen() {
         {agentResult ? (
           <View style={[styles.planCard, { borderColor: colors.border, backgroundColor: colors.background, marginTop: 10 }]}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: colors.foreground }}>টাস্ক স্ট্যাটাস: {agentResult.state.toUpperCase()}</Text>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: colors.foreground }}>
+                টাস্ক স্ট্যাটাস: {agentResult.state.toUpperCase()} {agentResult.latencyMs ? `(${agentResult.latencyMs}ms)` : ''}
+              </Text>
               <View style={[styles.categoryPill, { backgroundColor: agentResult.state === 'completed' ? colors.primary : colors.secondary }]}>
                 <Text style={{ fontSize: 10, fontWeight: '700', color: colors.primaryForeground }}>
-                  {agentResult.requiresInternet ? 'ONLINE REQUIRED' : 'OFFLINE OK'}
+                  {agentResult.detectedLanguage.toUpperCase()} · {agentResult.requiresInternet ? 'ONLINE' : 'OFFLINE'}
                 </Text>
               </View>
             </View>
-            <Text style={[styles.body, { color: colors.foreground, marginTop: 4 }]}>{agentResult.summary}</Text>
+            <Text style={[styles.body, { color: colors.foreground, marginTop: 6 }]}>{agentResult.summary}</Text>
 
             {agentResult.state === 'permission_pending' && agentResult.confirmationMessage ? (
               <View style={{ marginTop: 8, gap: 6 }}>
