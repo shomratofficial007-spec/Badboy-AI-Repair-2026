@@ -116,11 +116,13 @@ export interface ProjectBrain {
   knownLimitations: string[];
 }
 
+export type QAStatus = 'passed' | 'failed' | 'not_run';
+
 export interface QAResult {
-  typecheckPassed: boolean;
-  unitTestsPassed: boolean;
-  buildPassed: boolean;
-  securityChecksPassed: boolean;
+  typecheckStatus: QAStatus;
+  unitTestsStatus: QAStatus;
+  buildStatus: QAStatus;
+  securityChecksStatus: QAStatus;
   details: string[];
 }
 
@@ -688,19 +690,21 @@ export function getProjectBrainSummary(): ProjectBrain {
 }
 
 /**
- * Reports Auto QA test status checks dynamically based on environment checks.
+ * The mobile UI cannot run workspace typecheck, Node tests, production builds, or
+ * repository-wide security scans itself. Keep these checks NOT RUN until a real
+ * CI/build result is supplied; never infer success from the app being open.
  */
 export function runAutoQASuite(): QAResult {
   return {
-    typecheckPassed: true,
-    unitTestsPassed: true,
-    buildPassed: true,
-    securityChecksPassed: true,
+    typecheckStatus: 'not_run',
+    unitTestsStatus: 'not_run',
+    buildStatus: 'not_run',
+    securityChecksStatus: 'not_run',
     details: [
-      'Typecheck: pnpm run typecheck verified via workspace TypeScript compiler',
-      'Unit Tests: developer.test.ts & youtube.test.ts passing via node --test',
-      'Build Verification: Expo web export & Cloudflare Pages _worker.js bundle tested',
-      'Security Verification: GitHub PAT token stored in SecureStore; secrets kept server-side',
+      'NOT RUN — TypeScript typecheck must be executed by the workspace/CI runner.',
+      'NOT RUN — Unit tests must be executed by the Node test runner.',
+      'NOT RUN — Production Expo/Cloudflare build has not been run by this screen.',
+      'NOT RUN — Security checks require an actual scan; token storage alone does not verify security.',
     ],
   };
 }
