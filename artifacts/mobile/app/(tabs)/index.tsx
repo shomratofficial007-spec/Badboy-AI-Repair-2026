@@ -11,6 +11,7 @@ import {
   Linking,
   Platform,
   Pressable,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -300,6 +301,113 @@ export default function ChatScreen() {
     setTimeout(() => setSpeaking(false), 2000);
   }, [messages, speaking]);
 
+  const startNewChat = () => {
+    if (!messages.length) {
+      setDraft('');
+      setError(null);
+      return;
+    }
+    Alert.alert('নতুন চ্যাট শুরু করবেন?', 'বর্তমান কথোপকথনটি ইতিহাস থেকে সরিয়ে নতুন চ্যাট শুরু হবে।', [
+      { text: 'বাতিল', style: 'cancel' },
+      { text: 'নতুন চ্যাট', onPress: () => { setMessages([]); setDraft(''); setError(null); } },
+    ]);
+  };
+
+  const shareConversation = async () => {
+    if (!messages.length) {
+      setError('শেয়ার করার মতো কোনো চ্যাট নেই।');
+      return;
+    }
+    const transcript = messages.map((item) =>
+      `${item.role === 'user' ? 'আপনি' : 'Badboy AI'}: ${item.content}`,
+    ).join('\\n\\n');
+    try {
+      await Share.share({ message: transcript, title: 'Badboy AI চ্যাট' });
+    } catch {
+      setError('চ্যাট শেয়ার করা যায়নি।');
+    }
+  };
+
+  const chooseAiStyle = () => {
+    const styles = [
+      { label: 'বন্ধুসুলভ', value: 'Warm, friendly, thoughtful, clear, practical. Always reply in Bangla (Bengali) unless the user asks otherwise.' },
+      { label: 'পেশাদার', value: 'Professional, precise, respectful, structured, and practical. Always reply in Bangla (Bengali) unless the user asks otherwise.' },
+      { label: 'মজার / Funny', value: 'Light-hearted, witty, playful but respectful. Use humor when appropriate, never at the user’s expense. Reply in Bangla (Bengali) unless asked otherwise.' },
+      { label: 'Jarvis / Sci-fi', value: 'A polished futuristic personal assistant: calm, concise, proactive, technically clear, with a subtle sci-fi tone. Never pretend to have performed actions. Reply in Bangla (Bengali) unless asked otherwise.' },
+      { label: 'শিক্ষক', value: 'Patient teacher: explain step by step in simple language, use examples, check assumptions, and avoid unnecessary jargon. Reply in Bangla (Bengali) unless asked otherwise.' },
+      { label: 'সৃজনশীল লেখক', value: 'Creative writing partner skilled at fiction, sci-fi, stories, poetry, dialogue, scripts, and brainstorming. Match the requested genre and tone. Reply in Bangla (Bengali) unless asked otherwise.' },
+      { label: 'সংক্ষিপ্ত উত্তর', value: 'Be concise and direct. Start with the answer, then only essential details. Reply in Bangla (Bengali) unless asked otherwise.' },
+      { label: 'বিস্তারিত উত্তর', value: 'Give thorough, well-organized explanations with examples and practical steps. Avoid repeating yourself. Reply in Bangla (Bengali) unless asked otherwise.' },
+    ];
+    Alert.alert('AI ব্যক্তিত্ব ও উত্তর-স্টাইল', 'একটি স্টাইল বেছে নিন। এটি আপনার AI-এর নির্দেশনা বদলাবে।', [
+      ...styles.map((item) => ({ text: item.label, onPress: () => updateSettings({ personality: item.value }) })),
+      { text: 'বাতিল', style: 'cancel' },
+    ]);
+  };
+
+  const showCreativeOptions = () => {
+    const prompts = [
+      { label: 'কল্পবিজ্ঞান গল্প', prompt: 'আমার জন্য একটি মৌলিক কল্পবিজ্ঞান গল্প লেখো। চরিত্র, জগৎ, দ্বন্দ্ব ও চমকপ্রদ সমাপ্তি তৈরি করো।' },
+      { label: 'ছোট গল্প', prompt: 'একটি আকর্ষণীয় মৌলিক বাংলা ছোট গল্প লেখো, শক্তিশালী শুরু ও সুন্দর সমাপ্তিসহ।' },
+      { label: 'কবিতা', prompt: 'আমার জন্য একটি মৌলিক বাংলা কবিতা লেখো; বিষয় ও আবেগ সুন্দরভাবে ফুটিয়ে তোলো।' },
+      { label: 'ভিডিও স্ক্রিপ্ট', prompt: 'একটি আকর্ষণীয় বাংলা ভিডিও স্ক্রিপ্ট লেখো—হুক, মূল অংশ ও সমাপ্তিসহ।' },
+      { label: 'আইডিয়া / Brainstorm', prompt: 'আমার বিষয়ের জন্য কয়েকটি নতুন, বাস্তবসম্মত ও সৃজনশীল আইডিয়া দাও এবং সেরা আইডিয়াটি কেন ভালো তা বলো।' },
+    ];
+    Alert.alert('সৃজনশীল লেখা', 'কোন ধরনের লেখা শুরু করবেন?', [
+      ...prompts.map((item) => ({ text: item.label, onPress: () => setDraft(item.prompt) })),
+      { text: 'বাতিল', style: 'cancel' },
+    ]);
+  };
+
+  const showChatOptions = () => {
+    Alert.alert('চ্যাট ও AI অপশন', 'কী করতে চান?', [
+      { text: 'AI ব্যক্তিত্ব / উত্তর-স্টাইল', onPress: chooseAiStyle },
+      { text: 'গল্প, কবিতা, স্ক্রিপ্ট', onPress: showCreativeOptions },
+      { text: 'নতুন চ্যাট', onPress: startNewChat },
+      { text: 'চ্যাট শেয়ার', onPress: () => { void shareConversation(); } },
+      { text: 'চ্যাট মুছুন', style: 'destructive', onPress: clearChat },
+      { text: 'বন্ধ', style: 'cancel' },
+    ]);
+  };
+
+  const regenerateAnswer = useCallback(async (message: ChatMessage) => {
+    if (busy || !settings.onlineAI) {
+      setError(!settings.onlineAI ? 'আবার উত্তর পেতে অনলাইন AI চালু করুন।' : 'আগের উত্তর শেষ হলে আবার চেষ্টা করুন।');
+      return;
+    }
+    const index = messages.findIndex((item) => item.id === message.id);
+    const previousUser = [...messages.slice(0, index)].reverse().find((item) => item.role === 'user');
+    if (!previousUser) {
+      setError('এই উত্তরের আগের প্রশ্নটি পাওয়া যায়নি।');
+      return;
+    }
+    const replacement = newMessage('assistant');
+    let working = [...messages.slice(0, index), replacement];
+    setMessages(working);
+    setBusy(true);
+    setError(null);
+    try {
+      await streamReply(previousUser.content, settings, (chunk) => {
+        const updated = { ...replacement, content: replacement.content + chunk };
+        working = working.map((item) => item.id === replacement.id ? updated : item);
+        setMessages(working);
+      });
+    } catch (cause) {
+      setMessages(messages);
+      setError(cause instanceof Error ? cause.message : 'নতুন উত্তর পাওয়া যায়নি।');
+    } finally {
+      setBusy(false);
+    }
+  }, [busy, messages, setMessages, settings]);
+
+  const shareMessage = async (message: ChatMessage) => {
+    try {
+      await Share.share({ message: message.content, title: 'Badboy AI উত্তর' });
+    } catch {
+      setError('বার্তাটি শেয়ার করা যায়নি।');
+    }
+  };
+
   const clearChat = () => {
     Alert.alert(
       'চ্যাট ইতিহাস মুছবেন?',
@@ -362,7 +470,7 @@ export default function ChatScreen() {
             isUser && styles.userBubble,
           ]}
         >
-          <Text style={{ color: isUser ? colors.primaryForeground : colors.foreground, fontSize: 15, lineHeight: 22 }}>
+          <Text selectable style={{ color: isUser ? colors.primaryForeground : colors.foreground, fontSize: 15, lineHeight: 22 }}>
             {item.content || (busy && item.role === 'assistant' ? 'Badboy ভাবছে…' : '')}
           </Text>
           {ytIntent ? (
@@ -378,6 +486,22 @@ export default function ChatScreen() {
               <Feather name="youtube" size={16} color="#ffffff" />
               <Text style={styles.ytButtonText}>YouTube-এ "{ytIntent.query}" প্লে করুন</Text>
             </Pressable>
+          ) : null}
+          {!isUser && item.content.trim() ? (
+            <View style={styles.messageActions}>
+              <Pressable onPress={() => { if (isReadAloudAvailable()) speak(item.content, selectedLang); else setError('এই ডিভাইসে পড়ে শোনানো সমর্থিত নয়।'); }} accessibilityRole="button" accessibilityLabel="উত্তর পড়ে শুনুন" style={[styles.messageAction, { borderColor: colors.border }]}>
+                <Feather name="volume-2" size={13} color={colors.mutedForeground} />
+                <Text style={{ color: colors.mutedForeground, fontSize: 11 }}>শুনুন</Text>
+              </Pressable>
+              <Pressable onPress={() => { void shareMessage(item); }} accessibilityRole="button" accessibilityLabel="উত্তর শেয়ার করুন" style={[styles.messageAction, { borderColor: colors.border }]}>
+                <Feather name="share-2" size={13} color={colors.mutedForeground} />
+                <Text style={{ color: colors.mutedForeground, fontSize: 11 }}>শেয়ার</Text>
+              </Pressable>
+              <Pressable onPress={() => void regenerateAnswer(item)} disabled={busy} accessibilityRole="button" accessibilityLabel="উত্তর আবার তৈরি করুন" style={[styles.messageAction, { borderColor: colors.border, opacity: busy ? 0.5 : 1 }]}>
+                <Feather name="refresh-cw" size={13} color={colors.mutedForeground} />
+                <Text style={{ color: colors.mutedForeground, fontSize: 11 }}>আবার উত্তর</Text>
+              </Pressable>
+            </View>
           ) : null}
         </View>
       </View>
@@ -419,6 +543,11 @@ export default function ChatScreen() {
           </View>
         </View>
 
+        {/* ChatGPT-style chat options */}
+        <Pressable onPress={showChatOptions} accessibilityRole="button" accessibilityLabel="চ্যাট অপশন খুলুন" style={[styles.iconButton, { backgroundColor: colors.secondary, marginLeft: 6 }]}>
+          <Feather name="more-horizontal" size={19} color={colors.foreground} />
+        </Pressable>
+
         {/* Language Selector Toggle */}
         <Pressable
           onPress={() => setSelectedLang((prev) => (prev === 'bn-BD' ? 'en-US' : 'bn-BD'))}
@@ -459,7 +588,7 @@ export default function ChatScreen() {
             কথা বলতে "Oi Badboy" বলুন অথবা নিচের অপশন বেছে নিন। যেকোনো অনুসন্ধানে বাংলা ভাষায় তাৎক্ষণিক উত্তর প্রস্তুত।
           </Text>
           <View style={styles.suggestions}>
-            {['আজকের দিনটি কীভাবে সাজাব?', 'আমাকে একটি দরকারি পরামর্শ দাও'].map((item) => (
+            {['আজকের দিনটি কীভাবে সাজাব?', 'আমাকে একটি দরকারি পরামর্শ দাও', 'একটি কল্পবিজ্ঞান গল্প লেখো', 'আমাকে ধাপে ধাপে কিছু শেখাও'].map((item) => (
               <Pressable
                 key={item}
                 onPress={() => setDraft(item)}
@@ -596,6 +725,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+  messageActions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 7, marginLeft: 3 },
+  messageAction: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5 },
   improveButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, padding: 8, marginTop: 4 },
   errorBox: { marginHorizontal: 12, marginBottom: 8, borderRadius: 10, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
   composer: { marginHorizontal: 12, borderWidth: 1, borderRadius: 20, minHeight: 52, maxHeight: 130, paddingHorizontal: 8, paddingVertical: 6, flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
