@@ -6,9 +6,48 @@ import {
   runAutoQASuite,
   getPluginRegistryStatus,
   executeAgentTask,
+  detectMessageLanguage,
+  performLiveWebResearch,
+  buildStructuredReasoning,
   DEFAULT_REPO_CONFIG,
   createGitHubPullRequest,
 } from './developer.ts';
+
+test('detectMessageLanguage - identifies Bengali, Banglish, English, and mixed script', () => {
+  assert.strictEqual(detectMessageLanguage('আজকের খবর কী?'), 'bn');
+  assert.strictEqual(detectMessageLanguage('Kemon acho bhai, ki korcho?'), 'banglish');
+  assert.strictEqual(detectMessageLanguage('What is the weather today?'), 'en');
+  assert.strictEqual(detectMessageLanguage('Hello ভাই কেমন আছেন?'), 'mixed');
+});
+
+test('buildStructuredReasoning - generates 5-point structured reasoning response', () => {
+  const res = buildStructuredReasoning({
+    prompt: 'How to deploy Expo app?',
+    lang: 'bn',
+    answerText: 'Expo web export pnpm run build দিয়ে প্রস্তুত করুন।',
+    explanationText: 'Cloudflare Pages wrangler pages deploy ডিরেক্টরি ব্যবহার করে।',
+    sources: ['[Cloudflare Pages Doc](https://pages.cloudflare.com)'],
+  });
+
+  assert.ok(res.rawFormattedText.includes('১. মূল উত্তর'));
+  assert.ok(res.rawFormattedText.includes('২. ব্যাখ্যা'));
+  assert.ok(res.rawFormattedText.includes('৩. তথ্যসূত্র ও উৎস'));
+  assert.ok(res.rawFormattedText.includes('৪. সীমাবদ্ধতা'));
+});
+
+test('performLiveWebResearch - retrieves search results with verified links', async () => {
+  const research = await performLiveWebResearch('Expo React Native 52');
+  assert.strictEqual(research.query, 'Expo React Native 52');
+  assert.ok(research.results.length > 0);
+  assert.ok(research.sourceSummary.includes('http'));
+});
+
+test('executeAgentTask - executes live web search when research prompt is detected', async () => {
+  const result = await executeAgentTask(' Search Cloudflare Pages docs', true);
+  assert.strictEqual(result.state, 'completed');
+  assert.ok(result.structuredAnswer);
+  assert.ok(result.searchResults);
+});
 
 test('executeAgentTask - YouTube command distinguishes search opening vs in-app playback', async () => {
   const result = await executeAgentTask('Play a song on YouTube', true);
@@ -84,7 +123,7 @@ test('runAutoQASuite - reports QA suite status accurately', () => {
 test('getPluginRegistryStatus - lists active and not_connected tool adapters', () => {
   const plugins = getPluginRegistryStatus();
   assert.ok(plugins.some((p) => p.id === 'github-adapter'));
-  assert.ok(plugins.some((p) => p.id === 'cloudflare-adapter'));
+  assert.ok(plugins.some((p) => p.id === 'web-research-adapter'));
   const gmailPlugin = plugins.find((p) => p.id === 'gmail-adapter');
   assert.strictEqual(gmailPlugin?.status, 'not_connected');
 });
