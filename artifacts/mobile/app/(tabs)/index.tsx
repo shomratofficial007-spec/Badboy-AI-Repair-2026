@@ -328,8 +328,41 @@ export default function ChatScreen() {
     }
   };
 
+  const chooseAiStyle = () => {
+    const styles = [
+      { label: 'বন্ধুসুলভ', value: 'Warm, friendly, thoughtful, clear, practical. Always reply in Bangla (Bengali) unless the user asks otherwise.' },
+      { label: 'পেশাদার', value: 'Professional, precise, respectful, structured, and practical. Always reply in Bangla (Bengali) unless the user asks otherwise.' },
+      { label: 'মজার / Funny', value: 'Light-hearted, witty, playful but respectful. Use humor when appropriate, never at the user’s expense. Reply in Bangla (Bengali) unless asked otherwise.' },
+      { label: 'Jarvis / Sci-fi', value: 'A polished futuristic personal assistant: calm, concise, proactive, technically clear, with a subtle sci-fi tone. Never pretend to have performed actions. Reply in Bangla (Bengali) unless asked otherwise.' },
+      { label: 'শিক্ষক', value: 'Patient teacher: explain step by step in simple language, use examples, check assumptions, and avoid unnecessary jargon. Reply in Bangla (Bengali) unless asked otherwise.' },
+      { label: 'সৃজনশীল লেখক', value: 'Creative writing partner skilled at fiction, sci-fi, stories, poetry, dialogue, scripts, and brainstorming. Match the requested genre and tone. Reply in Bangla (Bengali) unless asked otherwise.' },
+      { label: 'সংক্ষিপ্ত উত্তর', value: 'Be concise and direct. Start with the answer, then only essential details. Reply in Bangla (Bengali) unless asked otherwise.' },
+      { label: 'বিস্তারিত উত্তর', value: 'Give thorough, well-organized explanations with examples and practical steps. Avoid repeating yourself. Reply in Bangla (Bengali) unless asked otherwise.' },
+    ];
+    Alert.alert('AI ব্যক্তিত্ব ও উত্তর-স্টাইল', 'একটি স্টাইল বেছে নিন। এটি আপনার AI-এর নির্দেশনা বদলাবে।', [
+      ...styles.map((item) => ({ text: item.label, onPress: () => updateSettings({ personality: item.value }) })),
+      { text: 'বাতিল', style: 'cancel' },
+    ]);
+  };
+
+  const showCreativeOptions = () => {
+    const prompts = [
+      { label: 'কল্পবিজ্ঞান গল্প', prompt: 'আমার জন্য একটি মৌলিক কল্পবিজ্ঞান গল্প লেখো। চরিত্র, জগৎ, দ্বন্দ্ব ও চমকপ্রদ সমাপ্তি তৈরি করো।' },
+      { label: 'ছোট গল্প', prompt: 'একটি আকর্ষণীয় মৌলিক বাংলা ছোট গল্প লেখো, শক্তিশালী শুরু ও সুন্দর সমাপ্তিসহ।' },
+      { label: 'কবিতা', prompt: 'আমার জন্য একটি মৌলিক বাংলা কবিতা লেখো; বিষয় ও আবেগ সুন্দরভাবে ফুটিয়ে তোলো।' },
+      { label: 'ভিডিও স্ক্রিপ্ট', prompt: 'একটি আকর্ষণীয় বাংলা ভিডিও স্ক্রিপ্ট লেখো—হুক, মূল অংশ ও সমাপ্তিসহ।' },
+      { label: 'আইডিয়া / Brainstorm', prompt: 'আমার বিষয়ের জন্য কয়েকটি নতুন, বাস্তবসম্মত ও সৃজনশীল আইডিয়া দাও এবং সেরা আইডিয়াটি কেন ভালো তা বলো।' },
+    ];
+    Alert.alert('সৃজনশীল লেখা', 'কোন ধরনের লেখা শুরু করবেন?', [
+      ...prompts.map((item) => ({ text: item.label, onPress: () => setDraft(item.prompt) })),
+      { text: 'বাতিল', style: 'cancel' },
+    ]);
+  };
+
   const showChatOptions = () => {
-    Alert.alert('চ্যাট অপশন', 'কী করতে চান?', [
+    Alert.alert('চ্যাট ও AI অপশন', 'কী করতে চান?', [
+      { text: 'AI ব্যক্তিত্ব / উত্তর-স্টাইল', onPress: chooseAiStyle },
+      { text: 'গল্প, কবিতা, স্ক্রিপ্ট', onPress: showCreativeOptions },
       { text: 'নতুন চ্যাট', onPress: startNewChat },
       { text: 'চ্যাট শেয়ার', onPress: () => { void shareConversation(); } },
       { text: 'চ্যাট মুছুন', style: 'destructive', onPress: clearChat },
@@ -464,6 +497,10 @@ export default function ChatScreen() {
                 <Feather name="share-2" size={13} color={colors.mutedForeground} />
                 <Text style={{ color: colors.mutedForeground, fontSize: 11 }}>শেয়ার</Text>
               </Pressable>
+              <Pressable onPress={() => void regenerateAnswer(item)} disabled={busy} accessibilityRole="button" accessibilityLabel="উত্তর আবার তৈরি করুন" style={[styles.messageAction, { borderColor: colors.border, opacity: busy ? 0.5 : 1 }]}>
+                <Feather name="refresh-cw" size={13} color={colors.mutedForeground} />
+                <Text style={{ color: colors.mutedForeground, fontSize: 11 }}>আবার উত্তর</Text>
+              </Pressable>
             </View>
           ) : null}
         </View>
@@ -551,7 +588,7 @@ export default function ChatScreen() {
             কথা বলতে "Oi Badboy" বলুন অথবা নিচের অপশন বেছে নিন। যেকোনো অনুসন্ধানে বাংলা ভাষায় তাৎক্ষণিক উত্তর প্রস্তুত।
           </Text>
           <View style={styles.suggestions}>
-            {['আজকের দিনটি কীভাবে সাজাব?', 'আমাকে একটি দরকারি পরামর্শ দাও'].map((item) => (
+            {['আজকের দিনটি কীভাবে সাজাব?', 'আমাকে একটি দরকারি পরামর্শ দাও', 'একটি কল্পবিজ্ঞান গল্প লেখো', 'আমাকে ধাপে ধাপে কিছু শেখাও'].map((item) => (
               <Pressable
                 key={item}
                 onPress={() => setDraft(item)}
