@@ -509,7 +509,7 @@ export default function SettingsScreen() {
                 <Text style={[styles.label, { color: colors.foreground, marginTop: 10 }]}>কাজসমূহ (Tasks):</Text>
                 {currentPlan.tasks.map((t) => (
                   <View key={t.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                    <Feather name="check-circle" size={13} color={colors.primary} />
+                    <Feather name="alert-circle" size={13} color={colors.mutedForeground} />
                     <Text style={[styles.body, { color: colors.foreground }]}>{t.title}</Text>
                   </View>
                 ))}
