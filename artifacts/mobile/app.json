@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "JARVIS AI",
-    "slug": "mobile",
+    "name": "Badboy AI",
+    "slug": "badboy-ai",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "badboyai",
     "userInterfaceStyle": "automatic",
     "splash": {
       "backgroundColor": "#f5f4ee",
@@ -13,12 +13,14 @@
       "resizeMode": "contain"
     },
     "ios": {
+      "bundleIdentifier": "com.badboyai.assistant",
       "supportsTablet": false,
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Use your microphone when you choose to send a voice message."
       }
     },
     "android": {
+      "package": "com.badboyai.assistant",
       "permissions": ["RECORD_AUDIO"]
     },
     "web": {
