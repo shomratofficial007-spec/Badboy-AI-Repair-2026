@@ -611,10 +611,8 @@ export async function executeAgentTask(
 
     try {
       const currentState = await readLocalState().catch(() => ({ messages: [], settings: {}, memories: [] }));
-      await storeMemoryNote(newNote, currentState.memories || []).catch(async () => {
-        // Safe fallback in environments without AsyncStorage native bindings (e.g. Node test runner)
-      });
-      log(`লোকাল স্টোরেজে রিমাইন্ডার আইডি ${noteId} সেভ প্রক্রিয়া সম্পন্ন।`);
+      await storeMemoryNote(newNote, currentState.memories || []);
+      log(`লোকাল স্টোরেজে রিমাইন্ডার আইডি ${noteId} সফলভাবে সেভ হয়েছে।`);
       return {
         taskId,
         state: 'completed',
@@ -629,17 +627,16 @@ export async function executeAgentTask(
       };
     } catch (storeErr) {
       const errMessage = storeErr instanceof Error ? storeErr.message : String(storeErr);
-      log(`লোকাল স্টোরেজ বার্তা: ${errMessage}`);
+      log(`লোকাল স্টোরেজে রিমাইন্ডার সেভ ব্যর্থ: ${errMessage}`);
       return {
         taskId,
-        state: 'completed',
+        state: 'failed',
         prompt: clean,
         detectedLanguage,
         requiresInternet: false,
         requiresConfirmation: false,
-        summary: 'রিমাইন্ডার অনুরোধ প্রসেস করা হয়েছে।',
+        summary: 'রিমাইন্ডারটি সেভ করা যায়নি। ডিভাইসের স্টোরেজ অনুমতি ও অ্যাপের অবস্থা পরীক্ষা করে আবার চেষ্টা করুন।',
         logs,
-        outputData: { offlineStored: true, noteId },
         latencyMs: Date.now() - startTime,
       };
     }
