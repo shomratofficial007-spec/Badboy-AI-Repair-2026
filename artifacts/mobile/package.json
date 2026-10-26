@@ -9,7 +9,7 @@
     "serve": "node server/serve.js",
     "deploy": "wrangler pages deploy ./dist --project-name voice-memory-assistant-net",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --experimental-strip-types --test lib/assistant/youtube.test.ts"
+    "test": "node --experimental-strip-types --test lib/assistant/*.test.ts"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
