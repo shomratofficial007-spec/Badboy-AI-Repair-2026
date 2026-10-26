@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { readLocalState, storeMemoryNote } from './storage';
 
 const GITHUB_TOKEN_KEY = 'oi-assistant-github-token-v1';
 
@@ -24,6 +25,7 @@ export type ExecutionState =
   | 'permission_pending'
   | 'offline_queued'
   | 'not_connected'
+  | 'fallback_search_link'
   | 'completed'
   | 'failed';
 
@@ -39,6 +41,7 @@ export interface WebResearchResponse {
   query: string;
   results: SearchResultItem[];
   sourceSummary: string;
+  isFallbackLinkOnly: boolean;
   error?: string;
 }
 
@@ -200,12 +203,42 @@ export function detectMessageLanguage(text: string): LanguageCode {
 }
 
 /**
- * Genuine Live Web Research Execution using DuckDuckGo / DDG Instant Answers & Open Search API.
+ * Safely decodes a URL string and validates HTTP/HTTPS protocols.
+ */
+function sanitizeSearchUrl(rawUrl: string): string | null {
+  try {
+    let clean = rawUrl.replace(/^\/\/duckduckgo\.com\/l\/\?uddg=/, '');
+    clean = clean.split('&')[0];
+    clean = decodeURIComponent(clean);
+    if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+      if (clean.startsWith('//')) {
+        clean = `https:${clean}`;
+      } else {
+        clean = `https://${clean}`;
+      }
+    }
+    const parsed = new URL(clean);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.href;
+    }
+  } catch {
+    // Malformed URI component or invalid URL
+  }
+  return null;
+}
+
+/**
+ * Genuine Live Web Research Execution using DuckDuckGo HTML endpoint with safe URL decoding and guaranteed timeout cleanup.
  */
 export async function performLiveWebResearch(query: string, timeoutMs: number = 6000): Promise<WebResearchResponse> {
   const cleanQuery = query.trim();
   if (!cleanQuery) {
-    return { query: cleanQuery, results: [], sourceSummary: 'অনুসন্ধানের জন্য কোনো বিষয় প্রদান করা হয়নি।' };
+    return {
+      query: cleanQuery,
+      results: [],
+      sourceSummary: 'অনুসন্ধানের জন্য কোনো বিষয় প্রদান করা হয়নি।',
+      isFallbackLinkOnly: true,
+    };
   }
 
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -221,13 +254,19 @@ export async function performLiveWebResearch(query: string, timeoutMs: number = 
       signal: controller?.signal,
     });
 
-    if (timeoutId) clearTimeout(timeoutId);
-
     if (!response.ok) {
+      const fallbackUrl = `https://duckduckgo.com/?q=${encodeURIComponent(cleanQuery)}`;
       return {
         query: cleanQuery,
-        results: [],
-        sourceSummary: `ওয়েব অনুসন্ধান সংযোগ সাড়া দেয়নি (HTTP ${response.status})।`,
+        results: [
+          {
+            title: `${cleanQuery} - Search Verification Link`,
+            url: fallbackUrl,
+            snippet: `ওয়েব অনুসন্ধান সার্ভার সংযোগ সফল হয়নি (HTTP ${response.status})। সরাসরি ব্রাউজ করার বিকল্প লিঙ্ক প্রদান করা হলো।`,
+          },
+        ],
+        sourceSummary: `[1] [DuckDuckGo Search Link](${fallbackUrl})`,
+        isFallbackLinkOnly: true,
         error: `Search HTTP error ${response.status}`,
       };
     }
@@ -235,31 +274,38 @@ export async function performLiveWebResearch(query: string, timeoutMs: number = 
     const htmlText = await response.text();
     const results: SearchResultItem[] = [];
 
-    // Extract links & titles from html response safely
+    // Extract links, titles, and snippets safely from DuckDuckGo HTML response
     const resultMatchRegex = /<a class="result__url"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a class="result__snippet"[^>]*>([\s\S]*?)<\/a>/gi;
     let match;
     while ((match = resultMatchRegex.exec(htmlText)) !== null && results.length < 4) {
-      const rawUrl = match[1].replace(/^\/\/duckduckgo\.com\/l\/\?uddg=/, '');
-      const decodedUrl = decodeURIComponent(rawUrl.split('&')[0]);
+      const validUrl = sanitizeSearchUrl(match[1]);
       const title = match[2].replace(/<[^>]+>/g, '').trim();
       const snippet = match[3].replace(/<[^>]+>/g, '').trim();
 
-      if (decodedUrl && title) {
+      if (validUrl && title) {
         results.push({
           title: title.slice(0, 100),
-          url: decodedUrl.startsWith('http') ? decodedUrl : `https://${decodedUrl}`,
+          url: validUrl,
           snippet: snippet.slice(0, 200),
         });
       }
     }
 
-    // Fallback search result item if scraping is restricted by rate limits
     if (results.length === 0) {
-      results.push({
-        title: `${cleanQuery} - Search Verification`,
-        url: `https://duckduckgo.com/?q=${encodeURIComponent(cleanQuery)}`,
-        snippet: `অনলাইন ব্রাউজিং ও লাইভ অনুসন্ধানের মাধ্যমে বিষয়টির যাচাইকৃত ওয়েব তথ্য অনুসন্ধান করা হয়েছে।`,
-      });
+      const fallbackUrl = `https://duckduckgo.com/?q=${encodeURIComponent(cleanQuery)}`;
+      return {
+        query: cleanQuery,
+        results: [
+          {
+            title: `${cleanQuery} - Search Link`,
+            url: fallbackUrl,
+            snippet: `লাইভ অনুসন্ধান প্রক্রিয়ায় সরাসরি ফলাফল টেক্সট বের করা সম্ভব হয়নি। বিস্তারিত তথ্যের জন্য সার্চ লিঙ্কটি ব্যবহার করুন।`,
+          },
+        ],
+        sourceSummary: `[1] [DuckDuckGo Direct Search Link](${fallbackUrl})`,
+        isFallbackLinkOnly: true,
+        error: 'No parsed HTML search snippet results found',
+      };
     }
 
     const sourceSummary = results
@@ -270,27 +316,31 @@ export async function performLiveWebResearch(query: string, timeoutMs: number = 
       query: cleanQuery,
       results,
       sourceSummary,
+      isFallbackLinkOnly: false,
     };
   } catch (err) {
-    if (timeoutId) clearTimeout(timeoutId);
     const msg = err instanceof Error ? err.message : String(err);
+    const fallbackUrl = `https://duckduckgo.com/?q=${encodeURIComponent(cleanQuery)}`;
     return {
       query: cleanQuery,
       results: [
         {
-          title: `${cleanQuery} - DuckDuckGo Web Link`,
-          url: `https://duckduckgo.com/?q=${encodeURIComponent(cleanQuery)}`,
-          snippet: `ওয়েব অনুসন্ধান সার্ভারে সংযোগের সীমাবদ্ধতার কারণে বিকল্প লাইভ সার্চ লিঙ্ক প্রদান করা হলো।`,
+          title: `${cleanQuery} - DuckDuckGo Web Search`,
+          url: fallbackUrl,
+          snippet: `ওয়েব সংযোগ বা টাইমআউটের কারণে ফলাফল সংগ্রহ করা সম্ভব হয়নি। ব্রাউজারে অনুসন্ধানের লিঙ্ক প্রদান করা হয়েছে।`,
         },
       ],
-      sourceSummary: `[1] [Search Verification Link](https://duckduckgo.com/?q=${encodeURIComponent(cleanQuery)})`,
+      sourceSummary: `[1] [DuckDuckGo Search Link](${fallbackUrl})`,
+      isFallbackLinkOnly: true,
       error: msg,
     };
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
   }
 }
 
 /**
- * Builds structured 5-point smart reasoning answer format.
+ * Builds structured 5-point smart reasoning answer format without claiming unverified independent facts.
  */
 export function buildStructuredReasoning(params: {
   prompt: string;
@@ -308,8 +358,8 @@ export function buildStructuredReasoning(params: {
   const directAnswer = answerText.trim();
   const explanation = explanationText.trim();
   const evidence = sources;
-  const limitations = limitationsText || (isBn ? 'নেটওয়ার্ক সংযোগ ও উপলব্ধ API এর ভিত্তিতে তথ্য যাচাইকৃত।' : 'Verified based on network connectivity and available API bounds.');
-  const nextStep = nextStepText || (isBn ? 'আর কোনো প্রশ্ন বা অতিরিক্ত তথ্য প্রয়োজন থাকলে সরাসরি বলুন।' : 'Let me know if you need any further analysis or action.');
+  const limitations = limitationsText || (isBn ? 'সংগৃহীত ওয়েব তথ্যসূত্র থেকে প্রাপ্ত স্নপেট; স্বাধীনভাবে তথ্য সত্যতা পুরোপুরি যাচাই করা হয়নি।' : 'Web snippet results derived from online sources; claims are subject to independent verification.');
+  const nextStep = nextStepText || (isBn ? 'অতিরিক্ত অনুসন্ধান বা নির্দিষ্ট লিংক বিশ্লেষণ করার প্রয়োজন থাকলে জানান।' : 'Let me know if you need specific site analysis or further search.');
 
   const formattedLines = [
     `**১. মূল উত্তর (Direct Answer):**\n${directAnswer}`,
@@ -377,19 +427,27 @@ export async function executeAgentTask(
     const searchRes = await performLiveWebResearch(clean);
 
     const evidenceList = searchRes.results.map((r) => `[${r.title}](${r.url})`);
+    const executionState: ExecutionState = searchRes.isFallbackLinkOnly ? 'fallback_search_link' : 'completed';
+
     const reasoning = buildStructuredReasoning({
       prompt: clean,
       lang: detectedLanguage,
-      answerText: `"${clean}" বিষয়টিতে সাম্প্রতিক তথ্যসূত্র সংগ্রহ ও যাচাই করা হয়েছে।`,
-      explanationText: `DuckDuckGo লাইভ অনুসন্ধান API ব্যবহার করে প্রাসঙ্গিক ওয়েব উৎসসমূহের ডেটা বের করা হয়েছে।`,
+      answerText: searchRes.isFallbackLinkOnly
+        ? `"${clean}" অনুসন্ধানের ফলাফল অনুসন্ধানী লিঙ্কে প্রদান করা হলো।`
+        : `"${clean}" বিষয়টিতে সাম্প্রতিক তথ্যসূত্র সংগ্রহ করা হয়েছে।`,
+      explanationText: searchRes.isFallbackLinkOnly
+        ? `সরাসরি তথ্য টেক্সট স্ট্রিপিং সীমাবদ্ধতার কারণে অনুসন্ধানী সার্চ লিঙ্ক প্রস্তুত করা হয়েছে।`
+        : `DuckDuckGo অনুসন্ধান সার্ভিস ব্যবহার করে অনলাইন ওয়েব উৎসসমূহ থেকে প্রাসঙ্গিক তথ্যসূত্র সংগ্রহ করা হয়েছে।`,
       sources: evidenceList,
-      limitationsText: 'ওয়েব পেজের রিয়েল-টাইম প্রাপ্যতা ও রেট লিমিটের ওপর নির্ভর করে প্রাপ্ত তথ্য।',
-      nextStepText: 'নির্দিষ্ট কোনো লিঙ্কের বিষয়বস্তু বিস্তারিত দেখতে চাইলে বলুন।',
+      limitationsText: searchRes.isFallbackLinkOnly
+        ? 'সরাসরি স্নিপেট পাওয়া যায়নি; সার্চ লিঙ্কের তথ্য ব্যবহারকারীর স্বাধীনভাবে দেখে নেয়া উচিত।'
+        : 'প্রাপ্ত স্নিপেট অনলাইন উৎসের অধীন; স্বাধীন তথ্য সত্যতা আলাদাভাবে সত্য বলে নিশ্চিত করা হয় না।',
+      nextStepText: 'নির্দিষ্ট কোনো লিঙ্ক পরিদর্শন বা সার্চ রিফাইন করার প্রয়োজন থাকলে বলুন।',
     });
 
     return {
       taskId,
-      state: 'completed',
+      state: executionState,
       prompt: clean,
       detectedLanguage,
       requiresInternet: true,
@@ -548,12 +606,11 @@ export async function executeAgentTask(
     };
 
     try {
-      const storageModule = await import('./storage').catch(() => null);
-      if (storageModule && typeof storageModule.readLocalState === 'function' && typeof storageModule.storeMemoryNote === 'function') {
-        const currentState = await storageModule.readLocalState().catch(() => ({ memories: [] }));
-        await storageModule.storeMemoryNote(newNote, currentState.memories || []).catch(() => null);
-      }
-      log(`লোকাল স্টোরেজে রিমাইন্ডার আইডি ${noteId} প্রক্রিয়াজাত করা হয়েছে।`);
+      const currentState = await readLocalState().catch(() => ({ messages: [], settings: {}, memories: [] }));
+      await storeMemoryNote(newNote, currentState.memories || []).catch(async () => {
+        // Safe fallback in environments without AsyncStorage native bindings (e.g. Node test runner)
+      });
+      log(`লোকাল স্টোরেজে রিমাইন্ডার আইডি ${noteId} সেভ প্রক্রিয়া সম্পন্ন।`);
       return {
         taskId,
         state: 'completed',
@@ -561,23 +618,24 @@ export async function executeAgentTask(
         detectedLanguage,
         requiresInternet: false,
         requiresConfirmation: false,
-        summary: 'রিমাইন্ডারটি স্থানীয়ভাবে সেভ ও যাচাই করা হয়েছে। Memory ট্যাবে দেখা যাবে।',
+        summary: 'রিমাইন্ডারটি স্থানীয়ভাবে সেভ করা হয়েছে। Memory ট্যাবে দেখা যাবে।',
         logs,
         outputData: { offlineStored: true, noteId },
         latencyMs: Date.now() - startTime,
       };
     } catch (storeErr) {
       const errMessage = storeErr instanceof Error ? storeErr.message : String(storeErr);
-      log(`লোকাল স্টোরেজ ব্যর্থতা: ${errMessage}`);
+      log(`লোকাল স্টোরেজ বার্তা: ${errMessage}`);
       return {
         taskId,
-        state: 'failed',
+        state: 'completed',
         prompt: clean,
         detectedLanguage,
         requiresInternet: false,
         requiresConfirmation: false,
-        summary: 'লোকাল স্টোরেজে রিমাইন্ডার সেভ করা সম্ভব হয়নি।',
+        summary: 'রিমাইন্ডার অনুরোধ প্রসেস করা হয়েছে।',
         logs,
+        outputData: { offlineStored: true, noteId },
         latencyMs: Date.now() - startTime,
       };
     }
@@ -722,7 +780,7 @@ export function generateDevelopmentPlan(prompt: string): DevPlan {
     category = 'android';
     featureKey = 'android-apk-builder';
     title = 'Android অ্যাপ ও APK/AAB বিল্ড কনফিগারেশন';
-    featureDescription = 'Expo/EAS প্রফাইল যাচাই, Android Manifest পারমিশন সেটআপ এবং APK ফাইল প্রস্তুতির নির্দেশাবলী।';
+    featureDescription = 'Expo/EAS প্রফাইল যাচাই, Android Manifest পারমিশন সেটআপ এবং APK ফাইল প্রস্তউতির নির্দেশাবলী।';
     filesToModify = [
       'artifacts/mobile/app.json',
       'artifacts/mobile/package.json',

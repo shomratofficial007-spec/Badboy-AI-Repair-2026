@@ -35,18 +35,90 @@ test('buildStructuredReasoning - generates 5-point structured reasoning response
   assert.ok(res.rawFormattedText.includes('৪. সীমাবদ্ধতা'));
 });
 
-test('performLiveWebResearch - retrieves search results with verified links', async () => {
-  const research = await performLiveWebResearch('Expo React Native 52');
-  assert.strictEqual(research.query, 'Expo React Native 52');
-  assert.ok(research.results.length > 0);
-  assert.ok(research.sourceSummary.includes('http'));
+test('performLiveWebResearch - deterministic mock test for successful search result', async () => {
+  const originalFetch = globalThis.fetch;
+  const mockHtml = `
+    <html><body>
+      <a class="result__url" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexpo.dev%2Fdocs">Expo Documentation</a>
+      <a class="result__snippet">Build one project that runs natively on all devices using Expo React Native framework.</a>
+    </body></html>
+  `;
+
+  globalThis.fetch = async () => new Response(mockHtml, { status: 200 });
+
+  try {
+    const research = await performLiveWebResearch('Expo React Native 52');
+    assert.strictEqual(research.query, 'Expo React Native 52');
+    assert.strictEqual(research.isFallbackLinkOnly, false);
+    assert.strictEqual(research.results.length, 1);
+    assert.strictEqual(research.results[0].title, 'Expo Documentation');
+    assert.strictEqual(research.results[0].url, 'https://expo.dev/docs');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('performLiveWebResearch - deterministic mock test for empty search results fallback link', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response('<html><body>No results</body></html>', { status: 200 });
+
+  try {
+    const research = await performLiveWebResearch('Empty Search Query');
+    assert.strictEqual(research.isFallbackLinkOnly, true);
+    assert.strictEqual(research.results.length, 1);
+    assert.ok(research.results[0].url.includes('duckduckgo.com'));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('performLiveWebResearch - deterministic mock test for HTTP error failure', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response('Server Error', { status: 500 });
+
+  try {
+    const research = await performLiveWebResearch('Search HTTP Fail');
+    assert.strictEqual(research.isFallbackLinkOnly, true);
+    assert.strictEqual(research.error, 'Search HTTP error 500');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('performLiveWebResearch - deterministic mock test for network rejection', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error('Network Connection Refused');
+  };
+
+  try {
+    const research = await performLiveWebResearch('Network Failure');
+    assert.strictEqual(research.isFallbackLinkOnly, true);
+    assert.strictEqual(research.error, 'Network Connection Refused');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test('executeAgentTask - executes live web search when research prompt is detected', async () => {
-  const result = await executeAgentTask(' Search Cloudflare Pages docs', true);
-  assert.strictEqual(result.state, 'completed');
-  assert.ok(result.structuredAnswer);
-  assert.ok(result.searchResults);
+  const originalFetch = globalThis.fetch;
+  const mockHtml = `
+    <html><body>
+      <a class="result__url" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fdevelopers.cloudflare.com%2Fpages%2F">Cloudflare Pages</a>
+      <a class="result__snippet">Deploy full-stack applications with Cloudflare Pages Functions.</a>
+    </body></html>
+  `;
+  globalThis.fetch = async () => new Response(mockHtml, { status: 200 });
+
+  try {
+    const result = await executeAgentTask(' Search Cloudflare Pages docs', true);
+    assert.strictEqual(result.state, 'completed');
+    assert.ok(result.structuredAnswer);
+    assert.ok(result.searchResults);
+    assert.strictEqual(result.searchResults?.isFallbackLinkOnly, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test('executeAgentTask - YouTube command distinguishes search opening vs in-app playback', async () => {
