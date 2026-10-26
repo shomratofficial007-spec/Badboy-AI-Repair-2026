@@ -730,7 +730,7 @@ export default function ChatScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  drawerScrim: { ...StyleSheet.absoluteFillObject, zIndex: 100, flexDirection: 'row' },
+  drawerScrim: { ...StyleSheet.absoluteFill, zIndex: 100, flexDirection: 'row' },
   drawerOutside: { flex: 1 },
   drawerPanel: { position: 'absolute', left: 0, top: 0, bottom: 0, width: '82%', maxWidth: 340, borderRightWidth: 1, paddingHorizontal: 16, zIndex: 101, elevation: 18 },
   drawerBrand: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 20 },
