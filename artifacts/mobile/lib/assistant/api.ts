@@ -16,7 +16,7 @@ function apiUrl(path: string) {
   // deployment as a safe default so preview APKs can reach the same-origin API.
   const domain = process.env.EXPO_PUBLIC_DOMAIN?.trim() || 'badboy007.netlify.app';
   const baseUrl = domain.startsWith('http') ? domain : `https://${domain}`;
-  return `${baseUrl.replace(/\\/$/, '')}/api${path}`;
+  return `${baseUrl.replace(/\/$/, '')}/api${path}`;
 }
 
 export async function streamReply(
