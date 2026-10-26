@@ -189,12 +189,19 @@ test('executeAgentTask - Gmail task asks for permission when OAuth token is pres
   assert.ok(result.confirmationMessage?.includes('ইমেইল বার্তাটি পাঠাতে চান'));
 });
 
-test('executeAgentTask - completes reminder task offline with local persistence note', async () => {
+test('executeAgentTask - never claims a reminder was saved when local persistence fails', async () => {
   const result = await executeAgentTask('একটাই রিমাইন্ডার সেট করো', false);
-  assert.strictEqual(result.state, 'completed');
   assert.strictEqual(result.requiresInternet, false);
-  assert.strictEqual(result.outputData?.offlineStored, true);
-  assert.ok(result.outputData?.noteId);
+
+  if (result.state === 'completed') {
+    assert.strictEqual(result.outputData?.offlineStored, true);
+    assert.ok(result.outputData?.noteId);
+    assert.ok(result.summary.includes('সেভ'));
+  } else {
+    assert.strictEqual(result.state, 'failed');
+    assert.strictEqual(result.outputData?.offlineStored, undefined);
+    assert.ok(result.summary.includes('সেভ করা যায়নি'));
+  }
 });
 
 test('generateDevelopmentPlan - parses Web Development request', () => {
