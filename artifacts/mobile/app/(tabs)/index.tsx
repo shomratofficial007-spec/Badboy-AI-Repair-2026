@@ -510,7 +510,7 @@ export default function ChatScreen() {
             borderColor: colors.border,
             backgroundColor: colors.card,
             marginBottom:
-              Platform.OS === 'web' ? 80 : Math.max(insets.bottom, 8),
+              Platform.OS === 'web' ? 80 : Math.max(insets.bottom, 8) + 76,
           },
         ]}
       >
