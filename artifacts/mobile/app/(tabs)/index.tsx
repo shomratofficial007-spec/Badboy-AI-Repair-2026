@@ -544,7 +544,7 @@ export default function ChatScreen() {
               </View>
             </View>
             <Text style={[styles.brandSub, { color: colors.mutedForeground }]}>
-              {settings.onlineAI ? 'OpenRouter Connected · Bangla Default' : 'Local Offline Mode'}
+              {settings.onlineAI ? 'তোমার AI সহকারী' : 'অফলাইন মোড'}
             </Text>
           </View>
         </View>
@@ -566,21 +566,13 @@ export default function ChatScreen() {
           </Text>
         </Pressable>
 
-        {/* Futuristic Audio Visualizer */}
-        <View style={styles.visualizerContainer}>
-          <Animated.View style={[styles.visualizerBar, { height: barAnim1, backgroundColor: colors.primary }]} />
-          <Animated.View style={[styles.visualizerBar, { height: barAnim2, backgroundColor: colors.primary }]} />
-          <Animated.View style={[styles.visualizerBar, { height: barAnim3, backgroundColor: colors.primary }]} />
-          <Animated.View style={[styles.visualizerBar, { height: barAnim4, backgroundColor: colors.primary }]} />
-        </View>
-
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="চ্যাট মুছে ফেলুন"
-          onPress={clearChat}
-          style={[styles.iconButton, { backgroundColor: colors.secondary }]}
+          accessibilityLabel="নতুন চ্যাট শুরু করুন"
+          onPress={startNewChat}
+          style={[styles.iconButton, { backgroundColor: colors.secondary, marginLeft: 4 }]}
         >
-          <Feather name="trash-2" size={17} color={colors.foreground} />
+          <Feather name="plus" size={19} color={colors.foreground} />
         </Pressable>
       </View>
 
@@ -633,12 +625,12 @@ export default function ChatScreen() {
           <View style={[styles.welcomeMark, { backgroundColor: colors.secondary, borderColor: colors.primary }]}>
             <BadboyLogo size={48} />
           </View>
-          <Text style={[styles.welcomeTitle, { color: colors.foreground }]}>স্বাগতম! আমি Badboy</Text>
+          <Text style={[styles.welcomeTitle, { color: colors.foreground }]}>কীভাবে সাহায্য করতে পারি?</Text>
           <Text style={[styles.welcomeText, { color: colors.mutedForeground }]}>
-            কথা বলতে "Oi Badboy" বলুন অথবা নিচের অপশন বেছে নিন। যেকোনো অনুসন্ধানে বাংলা ভাষায় তাৎক্ষণিক উত্তর প্রস্তুত।
+            আমি তোমার AI সহকারী। নিচের একটি বিষয় বেছে নাও অথবা মেসেজ লিখে শুরু করো।
           </Text>
           <View style={styles.suggestions}>
-            {['আজকের দিনটি কীভাবে সাজাব?', 'আমাকে একটি দরকারি পরামর্শ দাও', 'একটি কল্পবিজ্ঞান গল্প লেখো', 'আমাকে ধাপে ধাপে কিছু শেখাও'].map((item) => (
+            {['কোড লিখতে সাহায্য', 'নতুন কিছু শিখি', 'প্রজেক্ট ঠিক করি', 'একটি সৃজনশীল গল্প লেখো'].map((item) => (
               <Pressable
                 key={item}
                 onPress={() => setDraft(item)}
@@ -746,7 +738,7 @@ const styles = StyleSheet.create({
   drawerItem: { minHeight: 46, flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 10, borderRadius: 10 },
   drawerItemText: { flex: 1, fontSize: 14, fontWeight: '500' },
   drawerDivider: { height: 1, marginVertical: 12 },
-  header: { paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1 },
+  header: { paddingHorizontal: 14, paddingBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, gap: 4 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   brandTitle: { fontSize: 16, fontWeight: '700', letterSpacing: 0.5 },
@@ -758,12 +750,12 @@ const styles = StyleSheet.create({
   visualizerContainer: { flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: 38, marginHorizontal: 8 },
   visualizerBar: { width: 3, borderRadius: 2 },
   iconButton: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  welcome: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingBottom: 16 },
-  welcomeMark: { width: 68, height: 68, borderRadius: 20, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 18 },
-  welcomeTitle: { fontSize: 22, fontWeight: '700', textAlign: 'center', letterSpacing: 0.3 },
+  welcome: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 22, paddingBottom: 20 },
+  welcomeMark: { width: 76, height: 76, borderRadius: 24, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+  welcomeTitle: { fontSize: 24, fontWeight: '700', textAlign: 'center', letterSpacing: 0.1 },
   welcomeText: { fontSize: 14, lineHeight: 22, textAlign: 'center', marginTop: 8, maxWidth: 360 },
-  suggestions: { width: '100%', gap: 8, marginTop: 24 },
-  suggestion: { borderWidth: 1, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 16 },
+  suggestions: { width: '100%', gap: 10, marginTop: 26 },
+  suggestion: { borderWidth: 1, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 16 },
   messageList: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16 },
   messageRow: { width: '100%', alignItems: 'flex-start', marginVertical: 4 },
   userRow: { alignItems: 'flex-end' },
