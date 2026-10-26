@@ -5,6 +5,9 @@ on:
     paths:
       - "artifacts/mobile/**"
       - "lib/**"
+      - "functions/**"
+      - "wrangler.json"
+      - "artifacts/mobile/wrangler.json"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
@@ -14,6 +17,9 @@ on:
     paths:
       - "artifacts/mobile/**"
       - "lib/**"
+      - "functions/**"
+      - "wrangler.json"
+      - "artifacts/mobile/wrangler.json"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
@@ -44,3 +50,5 @@ jobs:
         run: pnpm --filter @workspace/mobile run typecheck
       - name: Production web build
         run: pnpm --filter @workspace/mobile run build
+      - name: Validate Cloudflare Worker deployment bundle (dry run)
+        run: pnpm exec wrangler deploy --dry-run --outdir /tmp/wrangler-dry-run
