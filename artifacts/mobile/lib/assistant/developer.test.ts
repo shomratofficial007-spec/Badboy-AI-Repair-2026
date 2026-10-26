@@ -224,12 +224,15 @@ test('getProjectBrainSummary - returns non-secret project knowledge', () => {
   assert.ok(brain.apiEndpoints.includes('/api/assistant/chat'));
 });
 
-test('runAutoQASuite - reports QA suite status accurately', () => {
+test('runAutoQASuite - does not claim checks passed when it has not executed them', () => {
   const qa = runAutoQASuite();
-  assert.strictEqual(qa.typecheckPassed, true);
-  assert.strictEqual(qa.unitTestsPassed, true);
-  assert.strictEqual(qa.buildPassed, true);
-  assert.ok(qa.details.length >= 4);
+  assert.strictEqual(qa.typecheckStatus, 'not_run');
+  assert.strictEqual(qa.unitTestsStatus, 'not_run');
+  assert.strictEqual(qa.buildStatus, 'not_run');
+  assert.strictEqual(qa.securityChecksStatus, 'not_run');
+  assert.strictEqual(qa.details.length, 4);
+  assert.ok(qa.details.every((detail) => detail.startsWith('NOT RUN')));
+  assert.ok(!qa.details.some((detail) => /passing|verified|tested/i.test(detail)));
 });
 
 test('getPluginRegistryStatus - lists active and not_connected tool adapters', () => {
