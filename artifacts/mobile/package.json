@@ -9,7 +9,7 @@
     "serve": "node server/serve.js",
     "deploy": "wrangler pages deploy ./dist --project-name voice-memory-assistant-net",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --experimental-strip-types --test lib/assistant/*.test.ts"
+    "test": "tsx --test lib/assistant/*.test.ts"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -54,7 +54,8 @@
     "react-native-worklets": "0.10.1",
     "typescript": "~6.0.3",
     "zod": "catalog:",
-    "zod-validation-error": "^3.4.0"
+    "zod-validation-error": "^3.4.0",
+    "tsx": "catalog:"
   },
   "dependencies": {
     "expo-audio": "~57.0.5",
