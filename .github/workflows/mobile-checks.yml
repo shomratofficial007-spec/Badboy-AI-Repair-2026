@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - "artifacts/mobile/**"
+      - ".github/workflows/android-apk.yml"
+      - "artifacts/mobile/eas.json"
+      - "artifacts/mobile/app.json"
       - "functions/**"
       - "wrangler.json"
       - "artifacts/mobile/wrangler.json"
