@@ -72,11 +72,15 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
 
   if (request.method === "GET") {
     if (pathname === "/api/healthz" || pathname === "/api/health") {
-      return jsonResponse({
-        status: env.OPENROUTER_API_KEY ? "ok" : "degraded",
-        aiConfigured: Boolean(env.OPENROUTER_API_KEY),
-        model: OPENROUTER_MODEL_ID,
-      }, env.OPENROUTER_API_KEY ? 200 : 503);
+      const aiConfigured = Boolean(env.OPENROUTER_API_KEY?.trim());
+      return jsonResponse(
+        {
+          status: aiConfigured ? "ok" : "degraded",
+          aiConfigured,
+          model: OPENROUTER_MODEL_ID,
+        },
+        aiConfigured ? 200 : 503,
+      );
     }
     return jsonResponse({ error: "Endpoint not found." }, 404);
   }
@@ -108,7 +112,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
     return jsonResponse({ error: "Invalid assistant message payload." }, 400);
   }
 
-  const apiKey = env.OPENROUTER_API_KEY || "";
+  const apiKey = env.OPENROUTER_API_KEY?.trim() || "";
   if (!apiKey) {
     console.error("[CF Function Error] OPENROUTER_API_KEY is missing from environment bindings.");
     return jsonResponse(
@@ -166,13 +170,8 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
   }
 
   if (!upstream.ok || !upstream.body) {
-    let errorText = "";
-    try {
-      errorText = await upstream.text();
-    } catch {
-      // Ignore text read failure
-    }
-    console.error(`[CF Function Error] OpenRouter upstream returned status ${upstream.status}: ${errorText.slice(0, 300)}`);
+    // Avoid logging provider response bodies; keep diagnostics sanitized.
+    console.error(`[CF Function Error] OpenRouter upstream returned status ${upstream.status}.`);
     return jsonResponse(
       {
         code: "OPENROUTER_REQUEST_FAILED",
