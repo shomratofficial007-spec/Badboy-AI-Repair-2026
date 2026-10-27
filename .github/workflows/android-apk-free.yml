@@ -33,6 +33,12 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Install pnpm
+        run: |
+          npm install --global pnpm@10.8.1
+          echo "$(npm prefix --global)/bin" >> "$GITHUB_PATH"
+          pnpm --version
+
       - name: Install Android command-line tools
         run: |
           mkdir -p "$ANDROID_HOME/cmdline-tools"
@@ -46,11 +52,6 @@ jobs:
         run: |
           yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses
           sdkmanager --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.8.1
 
       - name: Install workspace dependencies
         run: pnpm install --frozen-lockfile
