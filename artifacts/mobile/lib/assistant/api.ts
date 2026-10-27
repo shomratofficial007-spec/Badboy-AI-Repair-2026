@@ -2,7 +2,7 @@ import { fetch as expoFetch } from 'expo/fetch';
 import type { AssistantSettings } from '@/lib/assistant/types';
 
 const DEFAULT_NATIVE_API_DOMAIN =
-  'https://voice-memory-assistant-net.shomratofficial007.workers.dev';
+  'https://voice-memory-assistant-net.pages.dev';
 
 function apiUrl(path: string) {
   // Web deployments use their own same-origin API routes.
