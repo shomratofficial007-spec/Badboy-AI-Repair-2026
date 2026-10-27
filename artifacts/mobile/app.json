@@ -21,7 +21,11 @@
     },
     "android": {
       "package": "com.badboyai.assistant",
-      "permissions": ["RECORD_AUDIO"]
+      "permissions": ["RECORD_AUDIO"],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#030814"
+      }
     },
     "web": {
       "favicon": "./assets/images/icon.png"
