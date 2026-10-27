@@ -5,6 +5,12 @@ on:
   push:
     paths:
       - "artifacts/mobile/**"
+      - "functions/**"
+      - "wrangler.json"
+      - "artifacts/mobile/wrangler.json"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
       - ".github/workflows/android-apk.yml"
 
 jobs:
@@ -22,9 +28,20 @@ jobs:
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
+        with:
+          version: 10.8.1
 
       - name: Install workspace dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Validate EAS credentials
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Missing GitHub Actions secret EXPO_TOKEN. Add an Expo access token in repository Settings > Secrets and variables > Actions."
+            exit 1
+          fi
 
       - name: Install EAS CLI
         run: npm install --global eas-cli
