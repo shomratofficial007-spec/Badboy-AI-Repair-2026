@@ -92,13 +92,14 @@ export function isDictationAvailable(): boolean {
 
 export function isReadAloudAvailable(): boolean {
   const os = getPlatformOS();
+  const speechModule = getSpeechModule();
   if (os !== 'web' && os !== 'node') {
-    return true;
+    return typeof speechModule?.speak === 'function';
   }
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     return typeof window.speechSynthesis?.speak === 'function';
   }
-  return true;
+  return false;
 }
 
 /**
