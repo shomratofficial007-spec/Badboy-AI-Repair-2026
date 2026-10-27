@@ -27,17 +27,13 @@ jobs:
         with:
           node-version: 22
 
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-
       - name: Install pnpm
         run: |
           npm install --global pnpm@10.8.1
-          echo "$(npm prefix --global)/bin" >> "$GITHUB_PATH"
-          pnpm --version
+          PNPM_BIN="$(command -v pnpm)"
+          test -x "$PNPM_BIN"
+          echo "$(dirname "$PNPM_BIN")" >> "$GITHUB_PATH"
+          "$PNPM_BIN" --version
 
       - name: Install Android command-line tools
         run: |
