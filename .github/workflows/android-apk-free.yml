@@ -12,7 +12,7 @@ on:
 
 jobs:
   build-apk:
-    name: Prebuild Expo Android and assemble debug APK
+    name: Prebuild Expo Android and assemble release APK
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
@@ -59,17 +59,17 @@ jobs:
         working-directory: artifacts/mobile
         run: pnpm exec expo prebuild --platform android --no-install --non-interactive
 
-      - name: Build installable debug APK
+      - name: Build installable release APK with embedded JavaScript bundle
         working-directory: artifacts/mobile/android
-        run: chmod +x gradlew && ./gradlew --no-daemon assembleDebug
+        run: chmod +x gradlew && ./gradlew --no-daemon assembleRelease
 
-      - name: Verify APK exists
-        run: test -s artifacts/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Verify release APK exists
+        run: test -s artifacts/mobile/android/app/build/outputs/apk/release/app-release.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v5
         with:
-          name: badboy-ai-debug-apk
-          path: artifacts/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          name: badboy-ai-release-apk
+          path: artifacts/mobile/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14
