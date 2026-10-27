@@ -159,12 +159,22 @@ export function getVoiceErrorMessage(errorType?: string): string {
       return 'কোনো কথা শোনা যায়নি। আবার চেষ্টা করুন।';
     case 'network':
     case 'network_failure':
-      return 'ভয়েস রিকগনিশনের জন্য ইন্টারনেট সংযোগ প্রয়োজন। নেটওয়ার্ক পরীক্ষা করুন।';
+    case 'server':
+      return 'ভয়েস রিকগনিশন সার্ভারে সংযোগ হচ্ছে না। ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।';
     case 'audio-capture':
     case 'audio_extra':
       return 'মাইক্রোফোন ডিভাইসটি পাওয়া যায়নি বা অন্য অ্যাপ ব্যবহার করছে।';
     case 'aborted':
       return 'ভয়েস গ্রহণ ব্যবহারকারী দ্বারা বন্ধ করা হয়েছে।';
+    case 'service-not-allowed':
+    case 'language-not-supported':
+      return 'নির্বাচিত ভাষায় ভয়েস শনাক্ত করা যাচ্ছে না। Google Speech Services-এ বাংলা/ইংরেজি ভাষা সক্রিয় করে আবার চেষ্টা করুন।';
+    case 'busy':
+    case 'recognizer-busy':
+      return 'ভয়েস সার্ভিস ব্যস্ত আছে। অন্য কোনো অ্যাপের মাইক্রোফোন ব্যবহার বন্ধ করে আবার চেষ্টা করুন।';
+    case 'client':
+    case 'unknown':
+      return 'Android-এর Speech Recognition সার্ভিস চালু হতে পারেনি। Google app ও Speech Services by Google আপডেট করে ফোন পুনরায় চালু করুন।';
     case 'start_failed':
     case 'speech_error':
     case 'recognition-service-not-available':
@@ -249,10 +259,17 @@ export function dictateOnce(callbacks: SpeechCallbacks): () => void {
         );
         subscriptions.push(resSub);
 
-        const errSub = nativeModule.addListener('error', (event: { error?: string }) => {
+        const errSub = nativeModule.addListener('error', (event: { error?: string; message?: string }) => {
+          // Keep diagnostic details in Android logs without logging recognized speech.
+          console.error('[BadboyVoice] Native speech-recognition error', {
+            error: event?.error ?? 'unknown',
+            message: event?.message ?? null,
+            platform: os,
+            language: callbacks.lang ?? 'bn-BD',
+          });
           cleanup();
           finish();
-          callbacks.onError?.(event.error ?? 'speech_error');
+          callbacks.onError?.(event?.error ?? 'speech_error');
         });
         subscriptions.push(errSub);
 
@@ -268,7 +285,12 @@ export function dictateOnce(callbacks: SpeechCallbacks): () => void {
           continuous: false,
           maxAlternatives: 1,
         });
-      } catch {
+      } catch (cause) {
+        console.error('[BadboyVoice] Failed to initialize native speech recognition', {
+          error: cause instanceof Error ? cause.message : String(cause),
+          platform: os,
+          language: callbacks.lang ?? 'bn-BD',
+        });
         cleanup();
         finish();
         callbacks.onError?.('start_failed');
@@ -346,7 +368,11 @@ export function dictateOnce(callbacks: SpeechCallbacks): () => void {
 
   try {
     recognition.start();
-  } catch {
+  } catch (cause) {
+    console.error('[BadboyVoice] Web speech-recognition start failed', {
+      error: cause instanceof Error ? cause.message : String(cause),
+      language: callbacks.lang ?? 'bn-BD',
+    });
     finish();
     callbacks.onError?.('start_failed');
   }
