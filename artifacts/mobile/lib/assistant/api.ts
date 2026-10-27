@@ -2,7 +2,7 @@ import { fetch as expoFetch } from 'expo/fetch';
 import type { AssistantSettings } from '@/lib/assistant/types';
 
 const DEFAULT_NATIVE_API_DOMAIN =
-  'https://voice-memory-assistant-net.pages.dev';
+  'https://voice-memory-assistant-net.shomratofficial007.workers.dev';
 
 function apiUrl(path: string) {
   // Web deployments use their own same-origin API routes.
@@ -15,7 +15,7 @@ function apiUrl(path: string) {
   }
 
   // Native APKs have no window origin. Prefer an explicitly configured domain,
-  // otherwise use the verified Cloudflare Worker deployment instead of Netlify.
+  // otherwise use the confirmed Cloudflare Worker production URL.
   const domain =
     process.env.EXPO_PUBLIC_DOMAIN?.trim() || DEFAULT_NATIVE_API_DOMAIN;
   const baseUrl = domain.startsWith('http') ? domain : `https://${domain}`;
