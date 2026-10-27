@@ -72,7 +72,11 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
 
   if (request.method === "GET") {
     if (pathname === "/api/healthz" || pathname === "/api/health") {
-      return jsonResponse({ status: "ok" });
+      return jsonResponse({
+        status: env.OPENROUTER_API_KEY ? "ok" : "degraded",
+        aiConfigured: Boolean(env.OPENROUTER_API_KEY),
+        model: OPENROUTER_MODEL_ID,
+      }, env.OPENROUTER_API_KEY ? 200 : 503);
     }
     return jsonResponse({ error: "Endpoint not found." }, 404);
   }
