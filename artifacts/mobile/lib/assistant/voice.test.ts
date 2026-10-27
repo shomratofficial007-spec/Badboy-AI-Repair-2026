@@ -7,26 +7,41 @@ import {
   isReadAloudAvailable,
 } from './voice.ts';
 
-test('containsWakePhrase - identifies "Oi", "Badboy", and "JARVIS" wake words in various languages', () => {
-  assert.strictEqual(containsWakePhrase('Oi Badboy, ki khobor?'), true);
-  assert.strictEqual(containsWakePhrase('Hey Badboy play a song'), true);
-  assert.strictEqual(containsWakePhrase('ব্যাডবয় কেমন আছো'), true);
-  assert.strictEqual(containsWakePhrase('Oi, jarvis, system status?'), true);
-  assert.strictEqual(containsWakePhrase('ওহে ব্যাডবয়'), true);
-  assert.strictEqual(containsWakePhrase('hello world without wake word'), false);
+test('wake phrases: English and Bangla aliases are recognized', () => {
+  for (const phrase of [
+    'Oi', 'oi please', 'ওহে', 'Badboy', 'ব্যাডবয়', 'JARVIS', 'জারভিস',
+    'Oi Badboy, ki khobor?', 'ওহে ব্যাডবয়', 'Jarvis, status',
+  ]) {
+    assert.equal(containsWakePhrase(phrase), true, phrase);
+  }
 });
 
-test('getVoiceErrorMessage - maps error types to clear user-friendly Bangla messages', () => {
-  assert.match(getVoiceErrorMessage('denied'), /অনুমতি পাওয়া যায়নি/);
-  assert.match(getVoiceErrorMessage('permission_denied'), /অনুমতি পাওয়া যায়নি/);
-  assert.match(getVoiceErrorMessage('no-speech'), /কথা শোনা যায়নি/);
-  assert.match(getVoiceErrorMessage('network'), /ইন্টারনেট সংযোগ প্রয়োজন/);
-  assert.match(getVoiceErrorMessage('audio-capture'), /মাইক্রোফোন ডিভাইসটি পাওয়া যায়নি/);
-  assert.match(getVoiceErrorMessage('unsupported'), /সমর্থিত নয়/);
-  assert.match(getVoiceErrorMessage('unknown_error_code'), /ভয়েস ইনপুটে সমস্যা হয়েছে/);
+test('wake phrases match whole tokens, not substrings inside other words', () => {
+  for (const phrase of [
+    'boiling water', 'pointless', 'badboys', 'jarvison', 'hello world',
+  ]) {
+    assert.equal(containsWakePhrase(phrase), false, phrase);
+  }
 });
 
-test('isDictationAvailable & isReadAloudAvailable - boolean functions evaluate without throwing', () => {
-  assert.strictEqual(typeof isDictationAvailable(), 'boolean');
-  assert.strictEqual(typeof isReadAloudAvailable(), 'boolean');
+test('voice errors map permission, recognition, network and service failures to Bangla guidance', () => {
+  const cases: Array<[string, RegExp]> = [
+    ['denied', /অনুমতি পাওয়া যায়নি/],
+    ['permission_denied', /অনুমতি পাওয়া যায়নি/],
+    ['no-speech', /কথা শোনা যায়নি/],
+    ['network', /ইন্টারনেট সংযোগ প্রয়োজন/],
+    ['audio-capture', /মাইক্রোফোন ডিভাইসটি পাওয়া যায়নি/],
+    ['unsupported', /সমর্থিত নয়/],
+    ['recognition-service-not-available', /Speech Services by Google/],
+    ['start_failed', /ভয়েস চালু করা যায়নি/],
+    ['unknown_error_code', /ভয়েস ইনপুটে সমস্যা হয়েছে/],
+  ];
+  for (const [error, expected] of cases) {
+    assert.match(getVoiceErrorMessage(error), expected, error);
+  }
+});
+
+test('availability checks return booleans without throwing in the test runtime', () => {
+  assert.equal(typeof isDictationAvailable(), 'boolean');
+  assert.equal(typeof isReadAloudAvailable(), 'boolean');
 });
