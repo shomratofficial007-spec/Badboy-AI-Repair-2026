@@ -290,10 +290,22 @@ export default function SettingsScreen() {
       contentContainerStyle={[styles.content, { paddingTop: Math.max(insets.top, 12) + 14, paddingBottom: Math.max(insets.bottom, 20) + 90 }]}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={[styles.eyebrow, { color: colors.primary }]}>আপনার নিয়ন্ত্রণে</Text>
+      <View style={[styles.brandHeader, { borderColor: colors.border, backgroundColor: colors.card }]}>
+        <View style={[styles.brandMark, { backgroundColor: colors.primary }]}>
+          <Feather name="zap" size={19} color={colors.primaryForeground} />
+        </View>
+        <View style={styles.brandCopy}>
+          <Text style={[styles.brandName, { color: colors.foreground }]}>Badboy AI</Text>
+          <Text style={[styles.brandCaption, { color: colors.mutedForeground }]}>তোমার AI সহকারী · Settings</Text>
+        </View>
+        <View style={[styles.settingsPill, { borderColor: colors.border }]}>
+          <Feather name="sliders" size={14} color={colors.primary} />
+        </View>
+      </View>
+      <Text style={[styles.eyebrow, { color: colors.primary }]}>PERSONAL CONTROL CENTER</Text>
       <Text style={[styles.title, { color: colors.foreground }]}>সেটিংস</Text>
       <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-        কী শেয়ার হবে, কোন ফিচার চালু থাকবে—সবকিছু এখানে ঠিক করুন।
+        তোমার অভিজ্ঞতা, ভয়েস, গোপনীয়তা ও ডেভেলপার টুল—সব এক জায়গায়।
       </Text>
 
       {/* Central Agent Task Execution Engine */}
@@ -848,11 +860,17 @@ function SettingSwitch({
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: 18, gap: 13 },
-  eyebrow: { fontSize: 12, fontWeight: '700', letterSpacing: 0.7, marginTop: 0 },
-  title: { fontSize: 29, fontWeight: '700', letterSpacing: -0.7, marginTop: -8 },
+  content: { paddingHorizontal: 16, gap: 13 },
+  brandHeader: { minHeight: 68, borderWidth: 1, borderRadius: 20, paddingHorizontal: 13, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: 5 },
+  brandMark: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  brandCopy: { flex: 1, gap: 3 },
+  brandName: { fontSize: 16, fontWeight: '800', letterSpacing: 0.1 },
+  brandCaption: { fontSize: 12 },
+  settingsPill: { width: 34, height: 34, borderWidth: 1, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  eyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 1.2, marginTop: 1 },
+  title: { fontSize: 30, fontWeight: '800', letterSpacing: -0.8, marginTop: -7 },
   subtitle: { fontSize: 14, lineHeight: 21, marginTop: -5, marginBottom: 7 },
-  section: { borderWidth: 1, borderRadius: 21, padding: 15 },
+  section: { borderWidth: 1, borderRadius: 20, padding: 15 },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 14 },
   sectionTitle: { fontSize: 16, fontWeight: '700' },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 5 },
@@ -860,7 +878,7 @@ const styles = StyleSheet.create({
   label: { fontSize: 14, fontWeight: '700' },
   body: { fontSize: 13, lineHeight: 19 },
   rule: { height: 1, marginVertical: 12 },
-  personalityInput: { borderWidth: 1, borderRadius: 13, minHeight: 90, marginTop: 9, padding: 11, textAlignVertical: 'top', fontSize: 14, lineHeight: 20 },
+  personalityInput: { borderWidth: 1, borderRadius: 15, minHeight: 90, marginTop: 9, padding: 11, textAlignVertical: 'top', fontSize: 14, lineHeight: 20 },
   secondaryButton: { minHeight: 43, borderRadius: 13, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10 },
   smallNote: { fontSize: 12, lineHeight: 18, marginTop: 10 },
   wakeCard: { flexDirection: 'row', gap: 9, borderRadius: 13, padding: 11, marginTop: 13 },
@@ -873,7 +891,7 @@ const styles = StyleSheet.create({
   telegramItem: { borderBottomWidth: 1, paddingVertical: 10 },
   messageSender: { fontSize: 13, fontWeight: '700', marginBottom: 4 },
   errorText: { fontSize: 12, lineHeight: 18, marginTop: 9 },
-  dangerButton: { borderWidth: 1, borderRadius: 14, minHeight: 46, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 },
+  dangerButton: { borderWidth: 1, borderRadius: 15, minHeight: 46, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8 },
   tabButtonHorizontal: { paddingHorizontal: 12, height: 34, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 6 },
   tabText: { fontSize: 12, fontWeight: '700' },
   categoryPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
