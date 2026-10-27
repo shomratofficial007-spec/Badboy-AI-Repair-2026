@@ -15,7 +15,7 @@ function apiUrl(path: string) {
   }
 
   // Native APKs have no window origin. Prefer an explicitly configured domain,
-  // otherwise use the verified Cloudflare Worker deployment instead of Netlify.
+  // otherwise use the confirmed Cloudflare Worker production URL.
   const domain =
     process.env.EXPO_PUBLIC_DOMAIN?.trim() || DEFAULT_NATIVE_API_DOMAIN;
   const baseUrl = domain.startsWith('http') ? domain : `https://${domain}`;
