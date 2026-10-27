@@ -170,12 +170,6 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
   }
 
   if (!upstream.ok || !upstream.body) {
-    let errorText = "";
-    try {
-      errorText = await upstream.text();
-    } catch {
-      // Ignore text read failure
-    }
     // Avoid logging provider response bodies; keep diagnostics sanitized.
     console.error(`[CF Function Error] OpenRouter upstream returned status ${upstream.status}.`);
     return jsonResponse(
